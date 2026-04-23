@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Progress Bar Edition)</title>
+<title>Pro Network TimeCode (Smart Alert Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -27,15 +27,8 @@
 
     /* === 開機設備選擇畫面 === */
     #welcomeScreen {
-        position: fixed;
-        inset: 0;
-        background-color: #001a33;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
+        position: fixed; inset: 0; background-color: #001a33; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
     }
     #welcomeScreen h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ffcc00; letter-spacing: 2px; text-align: center;}
     #welcomeScreen p { font-size: 1.2rem; color: #aaa; margin-bottom: 20px; text-align: center; padding: 0 20px;}
@@ -96,21 +89,36 @@
         text-shadow: 0 0 25px rgba(255, 51, 51, 0.9), 0 0 10px rgba(255, 51, 51, 0.5) !important;
     }
 
-    /* === 倒數計時進度條設計 === */
+    /* === 倒數計時進度條設計 (由左至右縮減) === */
     .progress-container {
         width: 95%; height: 15px; background-color: #111; border: 2px solid #333;
         margin-top: 25px; border-radius: 8px; overflow: hidden;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.8); display: none; /* 僅在倒數模式顯示 */
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.8); display: none; 
+        justify-content: flex-end; /* 將填充條靠右對齊，實現由左至右縮小 */
     }
     .progress-bar {
         height: 100%; width: 100%; background-color: #00ff00;
         box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
         transition: width 0.1s linear, background-color 0.5s;
     }
-    /* 5分鐘內：黃色 */
     .progress-bar.warning { background-color: #ffcc00; box-shadow: 0 0 10px rgba(255, 204, 0, 0.5); }
-    /* 1分鐘內與超時：紅色 */
     .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 10px rgba(255, 51, 51, 0.5); }
+
+    /* === 全螢幕閃爍動畫 (背景紅 + 黑字反白) === */
+    @keyframes flashBg {
+        0%, 100% { background-color: #000; }
+        50% { background-color: #ff3333; }
+    }
+    @keyframes flashText {
+        0%, 100% { color: #ff3333; text-shadow: 0 0 25px rgba(255, 51, 51, 0.9); }
+        50% { color: #000000 !important; text-shadow: none !important; } /* 紅底黑字強烈反白，依舊清晰可見 */
+    }
+    .flash-active {
+        animation: flashBg 0.5s 2; /* 0.5秒為一週期，共閃爍 2 下 */
+    }
+    .flash-active .time-text {
+        animation: flashText 0.5s 2 !important;
+    }
 
     .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 2.5rem; color: #00cc00; letter-spacing: 5px; margin-top: 10px; }
 
@@ -165,7 +173,6 @@
 </head>
 <body>
 
-    <!-- 1. 開機設備選擇畫面 -->
     <div id="welcomeScreen">
         <h1>NTP TIMECODE SYNC</h1>
         <p>請輸入此裝置名稱，並選擇裝置類型</p>
@@ -179,7 +186,6 @@
         </div>
     </div>
 
-    <!-- 2. 主系統介面 -->
     <div id="mainUI">
         <div class="network-panel">
             <div class="panel-section">
@@ -218,12 +224,11 @@
             </div>
         </div>
 
-        <!-- 螢幕顯示區 -->
         <div class="display-container" id="displayContainer">
             <button class="fullscreen-btn" id="fsBtn">[ FULLSCREEN ]</button>
             <div class="stretch-wrapper" id="stretchWrapper">
                 <div class="time-text" id="timeDisplay">00:00:00:00</div>
-                <!-- 倒數進度條 -->
+                <!-- 倒數進度條 (容器使用 flex-end 靠右對齊，使其由左至右縮減) -->
                 <div class="progress-container" id="progressContainer">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
@@ -231,7 +236,6 @@
             </div>
         </div>
 
-        <!-- 控台按鈕區 (Master專用) -->
         <div class="controls-panel">
             <div class="control-group active" id="ctrl-timecode">
                 <label>FPS:</label>
@@ -263,9 +267,6 @@
     </div>
 
 <script>
-    // ==========================================
-    // 1. 初始化與自訂命名裝置系統
-    // ==========================================
     let isMaster = true;
     let myDeviceType = 'desktop';
     let myDeviceName = 'Unknown';
@@ -276,11 +277,8 @@
         myDeviceType = deviceType;
         isMaster = (deviceType === 'desktop');
         
-        if (nameInput !== "") {
-            myDeviceName = nameInput;
-        } else {
-            myDeviceName = (isMaster ? "MASTER-" : "SLAVE-") + myDeviceId.substring(4).toUpperCase();
-        }
+        if (nameInput !== "") myDeviceName = nameInput;
+        else myDeviceName = (isMaster ? "MASTER-" : "SLAVE-") + myDeviceId.substring(4).toUpperCase();
 
         document.getElementById('welcomeScreen').style.display = 'none';
         document.getElementById('mainUI').style.display = 'flex';
@@ -298,9 +296,6 @@
 
     function pad(num) { return num.toString().padStart(2, '0'); }
 
-    // ==========================================
-    // 2. 核心計時邏輯 (包含進度條與超時運算)
-    // ==========================================
     let currentMode = 'timecode'; 
     let tcIsRunning = false; let tcBaseTime = 0; let tcAccumulatedMs = 0;
     let fps = 24; let isDropFrame = false;
@@ -308,12 +303,14 @@
     let cdIsRunning = false;
     let cdTargetTime = 0;
     let cdRemainingMs = 0;
-    let cdTotalMs = 0; // 紀錄倒數總時長，用以計算百分比
+    let cdTotalMs = 0; 
 
-    let clockOffset = 0; // NTP 絕對誤差補償
+    let clockOffset = 0; 
+    let hasFlashed = false; // 控制閃爍動畫不要重複觸發
 
     function getSyncedTime() { return Date.now() + clockOffset; }
 
+    const displayContainer = document.getElementById('displayContainer');
     const timeDisplay = document.getElementById('timeDisplay');
     const userBitsDisplay = document.getElementById('userBitsDisplay');
     const progressContainer = document.getElementById('progressContainer');
@@ -338,7 +335,7 @@
         return `${pad(h)}:${pad(m)}:${pad(s)}${isDF ? ';' : ':'}${pad(f)}`;
     }
 
-    // 螢幕更新引擎 (每 30ms 重繪一次畫面)
+    // 螢幕更新引擎 (每 30ms 重繪一次)
     setInterval(() => {
         let now = getSyncedTime(); 
 
@@ -358,52 +355,69 @@
 
         } else if (currentMode === 'countdown') {
             userBitsDisplay.style.display = 'none';
-            progressContainer.style.display = 'block';
+            progressContainer.style.display = 'flex'; // 顯示進度條
 
             let ms = cdRemainingMs;
             if (cdIsRunning) {
-                ms = cdTargetTime - now; // 這裡不歸零，容許其變為負數以支援超時功能
+                ms = cdTargetTime - now; 
             }
             
-            let isOvertime = ms < 0;
+            let isOvertime = ms <= 0;
             let absMs = Math.abs(ms);
             
-            // 計算秒數：倒數時無條件進位(0.1秒算1秒)，超時的時候無條件捨去(0.1秒算0秒)
+            // 如果還沒超時，重置閃爍旗標以備下次超時使用
+            if (ms > 0) hasFlashed = false;
+            
+            // 計算秒數 (倒數進位，超時捨去)
             let totalSec = isOvertime ? Math.floor(absMs / 1000) : Math.ceil(absMs / 1000);
             
             // 超時加上 "+" 號前綴
             timeDisplay.textContent = (isOvertime ? "+" : "") + `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
             
-            // UI 超時變為紅字警示
+            // === 全螢幕閃爍動畫邏輯 ===
+            // 當跨越0的瞬間，並且時間仍在運行中，觸發一次性的雙閃紅光反白動畫
+            if (isOvertime && cdIsRunning && !hasFlashed) {
+                hasFlashed = true;
+                displayContainer.classList.add('flash-active');
+                // 動畫持續時間 1 秒後移除 Class (0.5s x 2次 = 1000ms)
+                setTimeout(() => {
+                    displayContainer.classList.remove('flash-active');
+                }, 1000); 
+            }
+
             if (isOvertime) {
                 timeDisplay.classList.add('overtime');
             } else {
                 timeDisplay.classList.remove('overtime');
             }
 
-            // --- 進度條與顏色邏輯 ---
+            // === 百分比進度條與變色邏輯 ===
             if (cdTotalMs > 0 && !isOvertime) {
                 let percent = (ms / cdTotalMs) * 100;
                 progressBar.style.width = percent + '%';
                 
-                // 變色判定 (依照剩餘時間)
-                if (ms <= 60000) { // 小於等於 1 分鐘：紅標
+                // 10% 到 5% 黃色，5% 以下紅色
+                if (percent <= 5) {
                     progressBar.className = 'progress-bar danger';
-                } else if (ms <= 300000) { // 小於等於 5 分鐘：黃標
+                } else if (percent <= 10) {
                     progressBar.className = 'progress-bar warning';
-                } else { // 正常狀態：綠標
+                } else {
                     progressBar.className = 'progress-bar';
                 }
             } else if (isOvertime) {
-                // 超時：進度歸零並維持紅色危險狀態
                 progressBar.style.width = '0%';
                 progressBar.className = 'progress-bar danger';
             } else {
-                // 未開始的預備狀態：根據目前輸入的設定時間給予對應顏色，滿條顯示
                 progressBar.style.width = '100%';
-                if (cdRemainingMs > 0 && cdRemainingMs <= 60000) progressBar.className = 'progress-bar danger';
-                else if (cdRemainingMs > 0 && cdRemainingMs <= 300000) progressBar.className = 'progress-bar warning';
-                else progressBar.className = 'progress-bar';
+                // 防呆：如果預設時間本身就在10%或5%的總邏輯內
+                if (cdTotalMs > 0) {
+                    let percent = (cdRemainingMs / cdTotalMs) * 100;
+                    if (percent <= 5) progressBar.className = 'progress-bar danger';
+                    else if (percent <= 10) progressBar.className = 'progress-bar warning';
+                    else progressBar.className = 'progress-bar';
+                } else {
+                    progressBar.className = 'progress-bar';
+                }
             }
 
         } else if (currentMode === 'clock') {
@@ -460,7 +474,6 @@
                         if(data.ub) userBitsDisplay.textContent = data.ub;
                     } else if(data.mode === 'countdown') {
                         cdIsRunning = data.cdIsRunning; cdTargetTime = data.cdTargetTime; cdRemainingMs = data.cdRemainingMs;
-                        // 接收 Master 設定的總倒數時長
                         if (data.cdTotalMs !== undefined) cdTotalMs = data.cdTotalMs;
                     }
                 }
@@ -475,7 +488,7 @@
                 mode: currentMode, fps: fps,
                 tcIsRunning: tcIsRunning, tcBaseTime: tcBaseTime, tcAccumulatedMs: tcAccumulatedMs,
                 cdIsRunning: cdIsRunning, cdTargetTime: cdTargetTime, cdRemainingMs: cdRemainingMs,
-                cdTotalMs: cdTotalMs, // 廣播總毫秒數供 Slave 繪製進度條
+                cdTotalMs: cdTotalMs, 
                 ub: userBitsDisplay.textContent
             });
             mqttClient.publish(`matc/room_${currentRoomCode}/state`, payload, { qos: 0 });
@@ -551,12 +564,11 @@
     document.getElementById('cdStart').addEventListener('click', () => {
         if(cdIsRunning || !isMaster) return;
         
-        // 若為尚未開始過的狀態，載入輸入框數值並同步設定進度條「總毫秒數」
         if(cdRemainingMs === 0) {
             cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
             cdTotalMs = cdRemainingMs; 
         } else if (cdTotalMs === 0) {
-            cdTotalMs = cdRemainingMs; // 容錯處理
+            cdTotalMs = cdRemainingMs; 
         }
         
         if(cdRemainingMs <= 0) return;
@@ -576,14 +588,13 @@
         if(!isMaster) return;
         cdIsRunning = false; 
         cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
-        cdTotalMs = cdRemainingMs; // 重設總時長
+        cdTotalMs = cdRemainingMs; 
         broadcastState();
     });
 
     // ==========================================
     // 5. 雙重全螢幕處理
     // ==========================================
-    const displayContainer = document.getElementById('displayContainer');
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
     let isFakeFullscreen = false;
@@ -592,7 +603,6 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
-            // 在全螢幕時保留一點 margin 讓進度條也具備漂亮的視覺比例
             const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.90;
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
