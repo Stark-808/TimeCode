@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Smart Alert Edition)</title>
+<title>Pro Network TimeCode (Max Display Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -41,7 +41,7 @@
 
     .device-btns { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
     .device-btns button {
-        padding: 15px 25px; font-size: 1.2rem; background: #002244; color: #cccccc;
+        padding: 15px 30px; font-size: 1.3rem; background: #002244; color: #cccccc;
         border: 2px solid #555555; border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: bold;
     }
     .device-btns button:hover { background: #00aaff; color: #000; border-color: #00aaff; }
@@ -69,7 +69,7 @@
     .display-container {
         position: relative; background-color: #000; padding: 40px 80px; border: 2px solid #333;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: all 0.3s; margin-bottom: 20px; width: 80%; max-width: 1200px;
+        transition: all 0.3s; margin-bottom: 20px; width: 85%; max-width: 1400px;
     }
 
     .stretch-wrapper {
@@ -77,9 +77,9 @@
         transform-origin: center center; width: 100%;
     }
 
-    /* 單純字體 */
+    /* 數字字體極大化 */
     .time-text {
-        font-family: 'Digital-7 Mono', sans-serif; font-size: 10rem; letter-spacing: 2px;
+        font-family: 'Digital-7 Mono', sans-serif; font-size: 15rem; letter-spacing: 2px;
         white-space: nowrap; color: #00ff00; line-height: 0.9; transition: color 0.3s;
     }
     
@@ -89,20 +89,19 @@
         text-shadow: 0 0 25px rgba(255, 51, 51, 0.9), 0 0 10px rgba(255, 51, 51, 0.5) !important;
     }
 
-    /* === 倒數計時進度條設計 (由左至右縮減) === */
+    /* === 倒數計時進度條設計 (切齊底部、加粗、由左至右縮減) === */
     .progress-container {
-        width: 95%; height: 15px; background-color: #111; border: 2px solid #333;
-        margin-top: 25px; border-radius: 8px; overflow: hidden;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.8); display: none; 
-        justify-content: flex-end; /* 將填充條靠右對齊，實現由左至右縮小 */
+        position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; /* 加粗且絕對定位於底部 */
+        background-color: #111; display: none; justify-content: flex-end; /* 靠右對齊，實現由左至右縮小 */
+        box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); z-index: 10; border-top: 2px solid #333;
     }
     .progress-bar {
         height: 100%; width: 100%; background-color: #00ff00;
-        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
         transition: width 0.1s linear, background-color 0.5s;
     }
-    .progress-bar.warning { background-color: #ffcc00; box-shadow: 0 0 10px rgba(255, 204, 0, 0.5); }
-    .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 10px rgba(255, 51, 51, 0.5); }
+    .progress-bar.warning { background-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
+    .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.6); }
 
     /* === 全螢幕閃爍動畫 (背景紅 + 黑字反白) === */
     @keyframes flashBg {
@@ -111,16 +110,16 @@
     }
     @keyframes flashText {
         0%, 100% { color: #ff3333; text-shadow: 0 0 25px rgba(255, 51, 51, 0.9); }
-        50% { color: #000000 !important; text-shadow: none !important; } /* 紅底黑字強烈反白，依舊清晰可見 */
+        50% { color: #000000 !important; text-shadow: none !important; }
     }
     .flash-active {
-        animation: flashBg 0.5s 2; /* 0.5秒為一週期，共閃爍 2 下 */
+        animation: flashBg 0.5s 2; 
     }
     .flash-active .time-text {
         animation: flashText 0.5s 2 !important;
     }
 
-    .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 2.5rem; color: #00cc00; letter-spacing: 5px; margin-top: 10px; }
+    .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 3.5rem; color: #00cc00; letter-spacing: 5px; margin-top: 15px; }
 
     .fullscreen-btn {
         position: absolute; top: 10px; right: 10px; background: transparent; color: #555;
@@ -154,20 +153,18 @@
 
     #mainUI { display: none; flex-direction: column; align-items: center; width: 100%; }
 
-    /* RWD 適應隱藏 */
-    body.device-tablet .controls-panel, body.device-mobile .controls-panel,
-    body.device-tablet .master-only, body.device-mobile .master-only, body.device-desktop .slave-only { display: none !important; }
+    /* RWD 適應隱藏 (平板與手機共用最佳化版面) */
+    body.device-tablet .controls-panel, 
+    body.device-tablet .master-only, 
+    body.device-desktop .slave-only { display: none !important; }
 
-    body.device-tablet .time-text { font-size: 15vw; }
-    body.device-tablet .user-bits { font-size: 4vw; }
-
-    body.device-mobile .network-panel { flex-direction: column; align-items: center; padding: 10px; gap: 10px; width: 90%; border-top: 2px solid #00aaff;}
-    body.device-mobile .panel-row label { display: none; }
-    body.device-mobile input#joinCodeInput { width: 100px; font-size: 1.5rem; text-align: center; }
-    body.device-mobile button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
-    body.device-mobile .display-container { border: none; padding: 20px 0; width: 100%; }
-    body.device-mobile .time-text { font-size: 22vw; }
-    body.device-mobile .user-bits { font-size: 6vw; }
+    body.device-tablet .network-panel { flex-direction: column; align-items: center; padding: 15px; gap: 15px; width: 90%; max-width: 400px; border-top: 3px solid #00aaff;}
+    body.device-tablet .panel-row label { display: none; }
+    body.device-tablet input#joinCodeInput { width: 120px; font-size: 1.5rem; text-align: center; }
+    body.device-tablet button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
+    body.device-tablet .display-container { border: none; padding: 0; width: 100vw; height: 50vh; margin-top: 20px; }
+    body.device-tablet .time-text { font-size: 24vw; } /* 針對行動裝置將字體開到極限 */
+    body.device-tablet .user-bits { font-size: 7vw; }
 
 </style>
 </head>
@@ -180,9 +177,9 @@
             <input type="text" id="welcomeName" placeholder="例如：導播電腦 / 攝影師手機">
         </div>
         <div class="device-btns">
+            <!-- 整合為兩種模式，操作更直覺 -->
             <button onclick="initSystem('desktop')">💻 電腦 (主控發送端)</button>
-            <button onclick="initSystem('tablet')">📱 平板 (純顯示接收)</button>
-            <button onclick="initSystem('mobile')">📱 手機 (極簡接收端)</button>
+            <button onclick="initSystem('tablet')">📱 平板／手機 (純顯示接收)</button>
         </div>
     </div>
 
@@ -228,11 +225,11 @@
             <button class="fullscreen-btn" id="fsBtn">[ FULLSCREEN ]</button>
             <div class="stretch-wrapper" id="stretchWrapper">
                 <div class="time-text" id="timeDisplay">00:00:00:00</div>
-                <!-- 倒數進度條 (容器使用 flex-end 靠右對齊，使其由左至右縮減) -->
-                <div class="progress-container" id="progressContainer">
-                    <div class="progress-bar" id="progressBar"></div>
-                </div>
                 <div class="user-bits" id="userBitsDisplay" style="display: none;">UB: 00 00 00 00</div>
+            </div>
+            <!-- 將進度條拉出至底層，使其絕對切齊螢幕最底部 -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
             </div>
         </div>
 
@@ -306,7 +303,7 @@
     let cdTotalMs = 0; 
 
     let clockOffset = 0; 
-    let hasFlashed = false; // 控制閃爍動畫不要重複觸發
+    let hasFlashed = false; 
 
     function getSyncedTime() { return Date.now() + clockOffset; }
 
@@ -368,18 +365,13 @@
             // 如果還沒超時，重置閃爍旗標以備下次超時使用
             if (ms > 0) hasFlashed = false;
             
-            // 計算秒數 (倒數進位，超時捨去)
             let totalSec = isOvertime ? Math.floor(absMs / 1000) : Math.ceil(absMs / 1000);
-            
-            // 超時加上 "+" 號前綴
             timeDisplay.textContent = (isOvertime ? "+" : "") + `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
             
             // === 全螢幕閃爍動畫邏輯 ===
-            // 當跨越0的瞬間，並且時間仍在運行中，觸發一次性的雙閃紅光反白動畫
             if (isOvertime && cdIsRunning && !hasFlashed) {
                 hasFlashed = true;
                 displayContainer.classList.add('flash-active');
-                // 動畫持續時間 1 秒後移除 Class (0.5s x 2次 = 1000ms)
                 setTimeout(() => {
                     displayContainer.classList.remove('flash-active');
                 }, 1000); 
@@ -396,10 +388,10 @@
                 let percent = (ms / cdTotalMs) * 100;
                 progressBar.style.width = percent + '%';
                 
-                // 10% 到 5% 黃色，5% 以下紅色
+                // 20% 到 5% 黃色，5% 以下紅色
                 if (percent <= 5) {
                     progressBar.className = 'progress-bar danger';
-                } else if (percent <= 10) {
+                } else if (percent <= 20) {
                     progressBar.className = 'progress-bar warning';
                 } else {
                     progressBar.className = 'progress-bar';
@@ -409,11 +401,10 @@
                 progressBar.className = 'progress-bar danger';
             } else {
                 progressBar.style.width = '100%';
-                // 防呆：如果預設時間本身就在10%或5%的總邏輯內
                 if (cdTotalMs > 0) {
                     let percent = (cdRemainingMs / cdTotalMs) * 100;
                     if (percent <= 5) progressBar.className = 'progress-bar danger';
-                    else if (percent <= 10) progressBar.className = 'progress-bar warning';
+                    else if (percent <= 20) progressBar.className = 'progress-bar warning';
                     else progressBar.className = 'progress-bar';
                 } else {
                     progressBar.className = 'progress-bar';
@@ -503,7 +494,7 @@
         for (const id in connectedClients) {
             if (now - connectedClients[id].lastSeen > 4000) delete connectedClients[id]; 
             else {
-                let icon = connectedClients[id].type === 'mobile' ? '📱' : '📟';
+                let icon = connectedClients[id].type === 'tablet' ? '📱' : '📟';
                 html += `<div class="client-item">${icon} ${connectedClients[id].name}</div>`;
                 count++;
             }
@@ -593,7 +584,7 @@
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理
+    // 5. 雙重全螢幕處理 (保留進度條的視覺比例)
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -603,7 +594,8 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
-            const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.90;
+            // 在全螢幕時保留一點 margin，同時讓字體保持在畫面正中央
+            const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.95;
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
         } else {
