@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Max Display Edition)</title>
+<title>Pro Network TimeCode (Smart Alert Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -91,8 +91,8 @@
 
     /* === 倒數計時進度條設計 (切齊底部、加粗、由左至右縮減) === */
     .progress-container {
-        position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; /* 加粗且絕對定位於底部 */
-        background-color: #111; display: none; justify-content: flex-end; /* 靠右對齊，實現由左至右縮小 */
+        position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; 
+        background-color: #111; display: none; justify-content: flex-end; 
         box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); z-index: 10; border-top: 2px solid #333;
     }
     .progress-bar {
@@ -100,7 +100,9 @@
         box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
         transition: width 0.1s linear, background-color 0.5s;
     }
+    /* 20%~5%：黃色 */
     .progress-bar.warning { background-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
+    /* 5%~0%：紅色 */
     .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.6); }
 
     /* === 全螢幕閃爍動畫 (背景紅 + 黑字反白) === */
@@ -112,12 +114,8 @@
         0%, 100% { color: #ff3333; text-shadow: 0 0 25px rgba(255, 51, 51, 0.9); }
         50% { color: #000000 !important; text-shadow: none !important; }
     }
-    .flash-active {
-        animation: flashBg 0.5s 2; 
-    }
-    .flash-active .time-text {
-        animation: flashText 0.5s 2 !important;
-    }
+    .flash-active { animation: flashBg 0.5s 2; }
+    .flash-active .time-text { animation: flashText 0.5s 2 !important; }
 
     .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 3.5rem; color: #00cc00; letter-spacing: 5px; margin-top: 15px; }
 
@@ -163,7 +161,7 @@
     body.device-tablet input#joinCodeInput { width: 120px; font-size: 1.5rem; text-align: center; }
     body.device-tablet button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
     body.device-tablet .display-container { border: none; padding: 0; width: 100vw; height: 50vh; margin-top: 20px; }
-    body.device-tablet .time-text { font-size: 24vw; } /* 針對行動裝置將字體開到極限 */
+    body.device-tablet .time-text { font-size: 24vw; } 
     body.device-tablet .user-bits { font-size: 7vw; }
 
 </style>
@@ -177,7 +175,6 @@
             <input type="text" id="welcomeName" placeholder="例如：導播電腦 / 攝影師手機">
         </div>
         <div class="device-btns">
-            <!-- 整合為兩種模式，操作更直覺 -->
             <button onclick="initSystem('desktop')">💻 電腦 (主控發送端)</button>
             <button onclick="initSystem('tablet')">📱 平板／手機 (純顯示接收)</button>
         </div>
@@ -207,9 +204,10 @@
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
+                    <!-- 預設直接選擇倒數計時器 -->
                     <select id="mainMode">
+                        <option value="countdown" selected>COUNTDOWN TIMER</option>
                         <option value="timecode">SMPTE TIMECODE</option>
-                        <option value="countdown">COUNTDOWN TIMER</option>
                         <option value="clock">SYSTEM CLOCK</option>
                     </select>
                 </div>
@@ -224,17 +222,29 @@
         <div class="display-container" id="displayContainer">
             <button class="fullscreen-btn" id="fsBtn">[ FULLSCREEN ]</button>
             <div class="stretch-wrapper" id="stretchWrapper">
-                <div class="time-text" id="timeDisplay">00:00:00:00</div>
+                <!-- 預設值顯示為 00:00 -->
+                <div class="time-text" id="timeDisplay">00:00</div>
                 <div class="user-bits" id="userBitsDisplay" style="display: none;">UB: 00 00 00 00</div>
             </div>
-            <!-- 將進度條拉出至底層，使其絕對切齊螢幕最底部 -->
+            <!-- 進度條 -->
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
         </div>
 
         <div class="controls-panel">
-            <div class="control-group active" id="ctrl-timecode">
+            
+            <!-- 將倒數計時設為預設 Active 面板 -->
+            <div class="control-group active" id="ctrl-countdown">
+                <!-- 預設時間改為 0分 0秒 -->
+                <input type="number" id="cdMin" min="0" value="0" style="width:50px;"><label>MIN</label>
+                <input type="number" id="cdSec" min="0" max="59" value="0" style="width:50px;"><label>SEC</label>
+                <button id="cdStart" class="cmd-btn play-btn">GO</button>
+                <button id="cdStop" class="cmd-btn stop-btn">HALT</button>
+                <button id="cdReset" class="cmd-btn reset-btn">CLEAR</button>
+            </div>
+
+            <div class="control-group" id="ctrl-timecode">
                 <label>FPS:</label>
                 <select id="fpsSelect">
                     <option value="24">24</option>
@@ -247,14 +257,6 @@
                 <button id="tcReset" class="cmd-btn reset-btn">RESET</button>
                 <label style="margin-left: 20px;">USER BITS:</label>
                 <input type="text" id="ubInput" value="20260423" maxlength="8">
-            </div>
-
-            <div class="control-group" id="ctrl-countdown">
-                <input type="number" id="cdMin" min="0" value="5" style="width:50px;"><label>MIN</label>
-                <input type="number" id="cdSec" min="0" max="59" value="0" style="width:50px;"><label>SEC</label>
-                <button id="cdStart" class="cmd-btn play-btn">GO</button>
-                <button id="cdStop" class="cmd-btn stop-btn">HALT</button>
-                <button id="cdReset" class="cmd-btn reset-btn">CLEAR</button>
             </div>
 
             <div class="control-group" id="ctrl-clock">
@@ -285,7 +287,7 @@
         document.getElementById('displayMyName').textContent = myDeviceName;
 
         if (!isMaster) {
-            document.getElementById('timeDisplay').textContent = "WAITING...";
+            document.getElementById('timeDisplay').textContent = "00:00";
             document.getElementById('userBitsDisplay').style.display = 'none';
         }
         connectNetwork();
@@ -293,7 +295,8 @@
 
     function pad(num) { return num.toString().padStart(2, '0'); }
 
-    let currentMode = 'timecode'; 
+    // 系統預設模式改為倒數計時
+    let currentMode = 'countdown'; 
     let tcIsRunning = false; let tcBaseTime = 0; let tcAccumulatedMs = 0;
     let fps = 24; let isDropFrame = false;
 
@@ -352,23 +355,29 @@
 
         } else if (currentMode === 'countdown') {
             userBitsDisplay.style.display = 'none';
-            progressContainer.style.display = 'flex'; // 顯示進度條
+            progressContainer.style.display = 'flex'; 
 
             let ms = cdRemainingMs;
-            if (cdIsRunning) {
-                ms = cdTargetTime - now; 
-            }
+            if (cdIsRunning) ms = cdTargetTime - now; 
             
+            // 【預設畫面判斷】若尚未輸入時間，或已經清除，呈現 00:00 與空進度條
+            if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) {
+                timeDisplay.textContent = "00:00";
+                timeDisplay.classList.remove('overtime');
+                progressBar.style.width = '0%';
+                progressBar.className = 'progress-bar';
+                return;
+            }
+
             let isOvertime = ms <= 0;
             let absMs = Math.abs(ms);
             
-            // 如果還沒超時，重置閃爍旗標以備下次超時使用
             if (ms > 0) hasFlashed = false;
             
             let totalSec = isOvertime ? Math.floor(absMs / 1000) : Math.ceil(absMs / 1000);
             timeDisplay.textContent = (isOvertime ? "+" : "") + `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
             
-            // === 全螢幕閃爍動畫邏輯 ===
+            // 全螢幕閃爍動畫邏輯
             if (isOvertime && cdIsRunning && !hasFlashed) {
                 hasFlashed = true;
                 displayContainer.classList.add('flash-active');
@@ -377,37 +386,26 @@
                 }, 1000); 
             }
 
+            // === 百分比進度條與變色邏輯 ===
             if (isOvertime) {
                 timeDisplay.classList.add('overtime');
-            } else {
-                timeDisplay.classList.remove('overtime');
-            }
-
-            // === 百分比進度條與變色邏輯 ===
-            if (cdTotalMs > 0 && !isOvertime) {
-                let percent = (ms / cdTotalMs) * 100;
-                progressBar.style.width = percent + '%';
-                
-                // 20% 到 5% 黃色，5% 以下紅色
-                if (percent <= 5) {
-                    progressBar.className = 'progress-bar danger';
-                } else if (percent <= 20) {
-                    progressBar.className = 'progress-bar warning';
-                } else {
-                    progressBar.className = 'progress-bar';
-                }
-            } else if (isOvertime) {
                 progressBar.style.width = '0%';
                 progressBar.className = 'progress-bar danger';
             } else {
-                progressBar.style.width = '100%';
+                timeDisplay.classList.remove('overtime');
+                
                 if (cdTotalMs > 0) {
-                    let percent = (cdRemainingMs / cdTotalMs) * 100;
-                    if (percent <= 5) progressBar.className = 'progress-bar danger';
-                    else if (percent <= 20) progressBar.className = 'progress-bar warning';
-                    else progressBar.className = 'progress-bar';
-                } else {
-                    progressBar.className = 'progress-bar';
+                    let percent = (ms / cdTotalMs) * 100;
+                    progressBar.style.width = percent + '%';
+                    
+                    // 20% ~ 5% 黃色，小於等於 5% 紅色
+                    if (percent <= 5) {
+                        progressBar.className = 'progress-bar danger';
+                    } else if (percent <= 20) {
+                        progressBar.className = 'progress-bar warning';
+                    } else {
+                        progressBar.className = 'progress-bar';
+                    }
                 }
             }
 
@@ -562,6 +560,7 @@
             cdTotalMs = cdRemainingMs; 
         }
         
+        // 防呆：若時間為0，直接 return
         if(cdRemainingMs <= 0) return;
         cdTargetTime = Date.now() + cdRemainingMs; 
         cdIsRunning = true; 
@@ -580,11 +579,15 @@
         cdIsRunning = false; 
         cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
         cdTotalMs = cdRemainingMs; 
+        
+        // 若輸入框都是 0，則直接歸零系統
+        if (cdRemainingMs === 0) { cdTotalMs = 0; }
+        
         broadcastState();
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 (保留進度條的視覺比例)
+    // 5. 雙重全螢幕處理 
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -594,8 +597,8 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
-            // 在全螢幕時保留一點 margin，同時讓字體保持在畫面正中央
-            const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.95;
+            // 縮小為 0.85 比例，留空間給底部進度條與邊界，讓數字維持在正中央
+            const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.85;
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
         } else {
