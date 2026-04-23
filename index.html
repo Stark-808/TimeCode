@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pro Network TimeCode (Multi-Device Edition)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pro Network TimeCode (NTP Calibration Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -19,13 +19,13 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 100vh;
+        min-height: 100vh;
         margin: 0;
         user-select: none; 
         overflow: hidden; 
     }
 
-    /* === 開機設備選擇畫面 (Welcome Screen) === */
+    /* === 開機設備選擇畫面 (自訂命名) === */
     #welcomeScreen {
         position: fixed;
         inset: 0;
@@ -37,20 +37,41 @@
         justify-content: center;
         color: #fff;
     }
-    #welcomeScreen h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ffcc00; letter-spacing: 2px;}
-    #welcomeScreen p { font-size: 1.2rem; color: #aaa; margin-bottom: 40px; }
+    #welcomeScreen h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ffcc00; letter-spacing: 2px; text-align: center;}
+    #welcomeScreen p { font-size: 1.2rem; color: #aaa; margin-bottom: 20px; text-align: center; padding: 0 20px;}
+    
+    .name-input-box {
+        margin-bottom: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .name-input-box input {
+        font-size: 1.5rem;
+        padding: 10px 20px;
+        background-color: #000;
+        color: #00ff00;
+        border: 2px solid #00aaff;
+        border-radius: 8px;
+        text-align: center;
+        width: 250px;
+        outline: none;
+    }
+
     .device-btns { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
     .device-btns button {
-        padding: 20px 30px;
-        font-size: 1.5rem;
+        padding: 15px 25px;
+        font-size: 1.2rem;
         background: #002244;
-        color: #00ff00;
-        border: 2px solid #00ff00;
+        color: #cccccc;
+        border: 2px solid #555555;
         border-radius: 10px;
         cursor: pointer;
         transition: 0.2s;
+        font-weight: bold;
     }
-    .device-btns button:hover { background: #00ff00; color: #000; }
+    .device-btns button:hover { background: #00aaff; color: #000; border-color: #00aaff; }
 
     /* === 頂部網路與角色面板 (藍底灰字) === */
     .network-panel {
@@ -73,6 +94,7 @@
 
     label, span.gray-text { font-size: 1.1rem; font-weight: bold; letter-spacing: 1px; color: #aaaaaa; }
     .highlight { color: #ffcc00; font-size: 1.2rem;}
+    .device-name-display { color: #00aaff; font-size: 1.2rem; font-weight: bold; }
     
     select, input[type="text"], input[type="number"] {
         font-size: 1.1rem;
@@ -85,7 +107,7 @@
         outline: none;
     }
     
-    /* === 螢幕顯示區 (置中與等比例縮放) === */
+    /* === 螢幕顯示區 === */
     .display-container {
         position: relative;
         background-color: #000;
@@ -107,6 +129,7 @@
         transform-origin: center center;
     }
 
+    /* 單純字體，無光暈 */
     .time-text {
         font-family: 'Digital-7 Mono', sans-serif; 
         font-size: 10rem; 
@@ -140,44 +163,32 @@
     }
     .fullscreen-btn:hover { color: #00ff00; border-color: #00ff00; }
 
-    /* 全螢幕狀態 (強制絕對置中) */
     .display-container:fullscreen {
-        width: 100vw;
-        height: 100vh;
-        padding: 0;
-        border: none;
-        background-color: #000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 100vw; height: 100vh; padding: 0; border: none;
+        background-color: #000; display: flex; align-items: center; justify-content: center;
+    }
+
+    .fake-fullscreen {
+        position: fixed !important; top: 0 !important; left: 0 !important;
+        width: 100vw !important; height: 100vh !important; z-index: 9999 !important;
+        background-color: #000 !important; border: none !important; margin: 0 !important;
+        padding: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important;
     }
 
     /* === 控台按鈕區 (藍底灰字) === */
     .controls-panel {
-        display: flex;
-        gap: 15px;
-        min-height: 60px;
-        align-items: center;
-        background: #002244;
-        padding: 15px 25px;
-        border: 1px solid #003366;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.8);
-        z-index: 10;
+        display: flex; gap: 15px; min-height: 60px; align-items: center;
+        background: #002244; padding: 15px 25px; border: 1px solid #003366;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.8); z-index: 10;
     }
     
     .control-group { display: none; gap: 15px; align-items: center; }
     .control-group.active { display: flex; }
 
     button.cmd-btn {
-        padding: 8px 18px;
-        font-size: 1.2rem;
-        border: 2px solid #555;
-        background-color: #001a33;
-        color: #cccccc;
-        font-family: inherit;
-        font-weight: bold;
-        text-transform: uppercase;
-        cursor: pointer;
+        padding: 8px 18px; font-size: 1.2rem; border: 2px solid #555;
+        background-color: #001a33; color: #cccccc; font-family: inherit;
+        font-weight: bold; text-transform: uppercase; cursor: pointer;
     }
     button.cmd-btn:active { background-color: #cccccc; color: #001a33; }
     button.play-btn { border-color: #00ff00; color: #00ff00; }
@@ -186,38 +197,27 @@
     
     .client-list-box {
         width: 250px; height: 80px; background: #001a33;
-        border: 1px solid #555; overflow-y: auto;
-        padding: 5px; font-size: 0.9rem; color: #cccccc;
+        border: 1px solid #555; overflow-y: auto; padding: 5px; font-size: 0.9rem; color: #cccccc;
     }
     .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #ff3333; margin-right: 5px; }
     .status-dot.online { background-color: #00ff00; }
 
     /* =========================================
-       裝置自動適應 (Device-specific Layouts) 
+       裝置自動適應隱藏邏輯
        ========================================= */
     #mainUI { display: none; flex-direction: column; align-items: center; width: 100%; }
 
-    /* 隱藏不必要的控制項 */
     body.device-tablet .controls-panel,
     body.device-mobile .controls-panel,
     body.device-tablet .master-only,
     body.device-mobile .master-only,
     body.device-desktop .slave-only { display: none !important; }
 
-    /* 平板模式優化 */
-    body.device-tablet .time-text { font-size: 12vw; }
-    body.device-tablet .user-bits { font-size: 3vw; }
+    body.device-tablet .time-text { font-size: 15vw; }
+    body.device-tablet .user-bits { font-size: 4vw; }
 
-    /* 手機模式極簡化優化 */
-    body.device-mobile .network-panel { 
-        flex-direction: column; 
-        align-items: center; 
-        padding: 10px; 
-        gap: 10px; 
-        width: 90%; 
-        border-top: 2px solid #00aaff;
-    }
-    body.device-mobile .panel-row label { display: none; /* 手機隱藏文字標籤省空間 */ }
+    body.device-mobile .network-panel { flex-direction: column; align-items: center; padding: 10px; gap: 10px; width: 90%; border-top: 2px solid #00aaff;}
+    body.device-mobile .panel-row label { display: none; }
     body.device-mobile input#joinCodeInput { width: 100px; font-size: 1.5rem; text-align: center; }
     body.device-mobile button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
     body.device-mobile .display-container { border: none; padding: 20px 0; width: 100%; }
@@ -228,10 +228,13 @@
 </head>
 <body>
 
-    <!-- 1. 開機設備選擇畫面 -->
+    <!-- 1. 開機設備選擇畫面 (自訂命名) -->
     <div id="welcomeScreen">
         <h1>NTP TIMECODE SYNC</h1>
-        <p>請選擇您現在使用的裝置以最佳化顯示介面</p>
+        <p>請輸入此裝置名稱，並選擇裝置類型</p>
+        <div class="name-input-box">
+            <input type="text" id="welcomeName" placeholder="例如：導播電腦 / 攝影師手機">
+        </div>
         <div class="device-btns">
             <button onclick="initSystem('desktop')">💻 電腦 (主控發送端)</button>
             <button onclick="initSystem('tablet')">📱 平板 (純顯示接收)</button>
@@ -241,22 +244,24 @@
 
     <!-- 2. 主系統介面 -->
     <div id="mainUI">
-        <!-- 網路與角色面板 -->
+        <!-- 網路面板 -->
         <div class="network-panel">
             <div class="panel-section">
                 <div class="panel-row">
                     <span class="status-dot" id="netStatus"></span>
-                    <span class="gray-text">NETWORK</span>
+                    <span class="gray-text" id="myRoleText">NETWORK</span>
+                </div>
+                <div class="panel-row">
+                    <label>NAME:</label>
+                    <span class="device-name-display" id="displayMyName">Unknown</span>
                 </div>
                 
-                <!-- Slave (平板/手機) 專屬：輸入代碼連線 -->
                 <div class="panel-row slave-only">
-                    <input type="text" id="joinCodeInput" placeholder="輸入5碼" maxlength="5">
+                    <input type="text" id="joinCodeInput" placeholder="輸入5碼房間代碼" maxlength="5">
                     <button class="cmd-btn" id="joinBtn" style="border-color:#00aaff; color:#00aaff;">CONNECT</button>
                 </div>
             </div>
 
-            <!-- Master (電腦) 專屬：顯示房間代碼與模式選擇 -->
             <div class="panel-section master-only">
                 <div class="panel-row">
                     <label>ROOM CODE:</label>
@@ -272,9 +277,8 @@
                 </div>
             </div>
 
-            <!-- Master (電腦) 專屬：連線設備監看 -->
             <div class="panel-section master-only">
-                <label>DEVICES: <span id="clientCount" style="color:#ccc;">0</span></label>
+                <label>CONNECTED DEVICES: <span id="clientCount" style="color:#ccc;">0</span></label>
                 <div class="client-list-box" id="clientListBox"></div>
             </div>
         </div>
@@ -321,34 +325,43 @@
 
 <script>
     // ==========================================
-    // 1. 初始化與裝置選擇系統
+    // 1. 初始化與自訂命名裝置系統
     // ==========================================
     let isMaster = true;
     let myDeviceType = 'desktop';
+    let myDeviceName = 'Unknown';
+    const myDeviceId = 'dev_' + Math.random().toString(36).substr(2, 6);
 
     function initSystem(deviceType) {
-        document.getElementById('welcomeScreen').style.display = 'none';
-        document.getElementById('mainUI').style.display = 'flex';
-        
+        let nameInput = document.getElementById('welcomeName').value.trim();
         myDeviceType = deviceType;
         isMaster = (deviceType === 'desktop');
         
-        // 設定 body class 觸發 CSS 響應式佈局
+        // 若未輸入名稱，自動配發預設名稱
+        if (nameInput !== "") {
+            myDeviceName = nameInput;
+        } else {
+            myDeviceName = (isMaster ? "MASTER-" : "SLAVE-") + myDeviceId.substring(4).toUpperCase();
+        }
+
+        document.getElementById('welcomeScreen').style.display = 'none';
+        document.getElementById('mainUI').style.display = 'flex';
         document.body.className = `device-${deviceType}`;
+        
+        document.getElementById('myRoleText').textContent = isMaster ? "MASTER (主控端)" : "SLAVE (接收端)";
+        document.getElementById('displayMyName').textContent = myDeviceName;
 
         if (!isMaster) {
-            timeDisplay.textContent = "WAITING...";
-            userBitsDisplay.style.display = 'none';
+            document.getElementById('timeDisplay').textContent = "WAITING...";
+            document.getElementById('userBitsDisplay').style.display = 'none';
         }
-        
-        // 啟動網路連線
         connectNetwork();
     }
 
     function pad(num) { return num.toString().padStart(2, '0'); }
 
     // ==========================================
-    // 2. 狀態變數與核心計時邏輯 (NTP 絕對時間)
+    // 2. 時間戳記自動校正邏輯 (Timestamp Calibration)
     // ==========================================
     let currentMode = 'timecode'; 
     let tcIsRunning = false;
@@ -360,13 +373,18 @@
     let cdIsRunning = false;
     let cdTargetTime = 0;
     let cdRemainingMs = 0;
-    const cdMinInput = document.getElementById('cdMin');
-    const cdSecInput = document.getElementById('cdSec');
+
+    // 核心誤差補償值：紀錄「主控端廣播的時間」與「本機網路時間」的差距
+    let clockOffset = 0;
+
+    // 獲取經誤差補償過後的「絕對同步時間」
+    function getSyncedTime() {
+        return Date.now() + clockOffset;
+    }
 
     const timeDisplay = document.getElementById('timeDisplay');
     const userBitsDisplay = document.getElementById('userBitsDisplay');
     const ubInput = document.getElementById('ubInput');
-    const fpsSelect = document.getElementById('fpsSelect');
     
     // SMPTE 轉換算法
     function msToTimeCode(ms, frameRate, isDF) {
@@ -375,31 +393,26 @@
         let fpsInt = (frameRate === 29.97) ? 30 : Math.round(frameRate);
 
         if (isDF) {
-            let dropFrames = 2;
-            let framesPer10Min = 17982;
-            let framesPerMin = 1798;
+            let dropFrames = 2; let framesPer10Min = 17982; let framesPerMin = 1798;
             let d = Math.floor(totalFrames / framesPer10Min);
             let rem = totalFrames % framesPer10Min;
             let count = 0;
             if (rem > dropFrames) count = Math.floor((rem - dropFrames) / framesPerMin);
             let mappedFrames = totalFrames + (9 * dropFrames * d) + (dropFrames * count);
-
             f = mappedFrames % fpsInt;
             s = Math.floor(mappedFrames / fpsInt) % 60;
             m = Math.floor(mappedFrames / (fpsInt * 60)) % 60;
             h = Math.floor(mappedFrames / (fpsInt * 3600)) % 24;
         } else {
-            f = totalFrames % fpsInt;
-            s = Math.floor(totalFrames / fpsInt) % 60;
-            m = Math.floor(totalFrames / (fpsInt * 60)) % 60;
-            h = Math.floor(totalFrames / (fpsInt * 3600)) % 24;
+            f = totalFrames % fpsInt; s = Math.floor(totalFrames / fpsInt) % 60;
+            m = Math.floor(totalFrames / (fpsInt * 60)) % 60; h = Math.floor(totalFrames / (fpsInt * 3600)) % 24;
         }
         return `${pad(h)}:${pad(m)}:${pad(s)}${isDF ? ';' : ':'}${pad(f)}`;
     }
 
-    // 螢幕更新引擎 (所有設備獨立依賴本地 NTP 時間運算)
+    // 螢幕更新引擎 (使用補償過的時間 getSyncedTime 進行運算)
     setInterval(() => {
-        let now = Date.now();
+        let now = getSyncedTime(); // ★ 使用自動校正後的時間基準
 
         if (currentMode === 'timecode') {
             let elapsedMs = tcAccumulatedMs;
@@ -424,22 +437,19 @@
 
         } else if (currentMode === 'clock') {
             userBitsDisplay.style.display = 'none';
-            let sysNow = new Date();
-            let h = sysNow.getHours();
-            let m = sysNow.getMinutes();
-            let s = sysNow.getSeconds();
-            let ms = Math.floor(sysNow.getMilliseconds() / 10);
+            let sysNow = new Date(now); // 同步顯示主控端時間基準下的系統時鐘
+            let h = sysNow.getHours(); let m = sysNow.getMinutes();
+            let s = sysNow.getSeconds(); let ms = Math.floor(sysNow.getMilliseconds() / 10);
             timeDisplay.textContent = `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms)}`;
         }
     }, 30);
 
     // ==========================================
-    // 3. MQTT 網路通訊架構 (跨裝置網址連線)
+    // 3. MQTT 網路通訊與廣播時間郵戳
     // ==========================================
     const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; 
     let mqttClient = null;
     let currentRoomCode = '';
-    const myDeviceId = 'dev_' + Math.random().toString(36).substr(2, 6);
     let connectedClients = {}; 
     let heartbeatInterval = null;
 
@@ -463,14 +473,19 @@
             try {
                 const data = JSON.parse(message.toString());
                 
-                // Master 監聽連線設備
+                // Master 接收含有「自訂名稱」的心跳包
                 if (isMaster && topic.endsWith('/heartbeat')) {
-                    connectedClients[data.id] = { type: data.type, lastSeen: Date.now() };
+                    connectedClients[data.id] = { name: data.name, type: data.type, lastSeen: Date.now() };
                     renderClientList();
                 }
                 
-                // Slave 接收狀態變更
+                // Slave 接收廣播狀態與時間郵戳 (Timestamp)
                 if (!isMaster && topic.endsWith('/state')) {
+                    // 自動計算網路誤差偏移量：主控端發送的時間戳記 - 本機當下的時間
+                    if (data.masterTimestamp) {
+                        clockOffset = data.masterTimestamp - Date.now();
+                    }
+
                     currentMode = data.mode;
                     if(data.mode === 'timecode') {
                         fps = data.fps; isDropFrame = (fps === 29.97);
@@ -484,9 +499,11 @@
         });
     }
 
+    // 主控端發送附有絕對時間戳記 (masterTimestamp) 的廣播
     function broadcastState() {
         if (isMaster && mqttClient && currentRoomCode && mqttClient.connected) {
             const payload = JSON.stringify({
+                masterTimestamp: Date.now(), // ★ 發送時間郵戳作為校正基準
                 mode: currentMode, fps: fps,
                 tcIsRunning: tcIsRunning, tcBaseTime: tcBaseTime, tcAccumulatedMs: tcAccumulatedMs,
                 cdIsRunning: cdIsRunning, cdTargetTime: cdTargetTime, cdRemainingMs: cdRemainingMs,
@@ -498,6 +515,7 @@
 
     setInterval(() => { if(isMaster) broadcastState(); }, 1500);
 
+    // 顯示含有自訂名稱的清單
     function renderClientList() {
         const now = Date.now();
         let html = ''; let count = 0;
@@ -505,7 +523,7 @@
             if (now - connectedClients[id].lastSeen > 4000) delete connectedClients[id]; 
             else {
                 let icon = connectedClients[id].type === 'mobile' ? '📱' : '📟';
-                html += `<div class="client-item">${icon} ${id.substring(0,6)} (Online)</div>`;
+                html += `<div class="client-item">${icon} ${connectedClients[id].name}</div>`;
                 count++;
             }
         }
@@ -513,7 +531,7 @@
         document.getElementById('clientCount').textContent = count;
     }
 
-    // Slave 加入房間
+    // 接收端加入連線並回報自訂名稱
     document.getElementById('joinBtn').addEventListener('click', () => {
         const code = document.getElementById('joinCodeInput').value.trim();
         if (code.length !== 5) { alert("請輸入主控台畫面上顯示的 5 位數代碼！"); return; }
@@ -525,19 +543,22 @@
         if(heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
             if(mqttClient && mqttClient.connected) {
-                mqttClient.publish(`matc/room_${currentRoomCode}/heartbeat`, JSON.stringify({ id: myDeviceId, type: myDeviceType }));
+                // 送出 ID, 裝置類型 與 自訂名稱
+                mqttClient.publish(`matc/room_${currentRoomCode}/heartbeat`, JSON.stringify({ 
+                    id: myDeviceId, 
+                    type: myDeviceType,
+                    name: myDeviceName 
+                }));
             }
         }, 2000);
     });
 
-
     // ==========================================
-    // 4. 控制面板事件 (Master 專用)
+    // 4. 控制面板事件 (只在 Master 下運作)
     // ==========================================
     document.getElementById('mainMode').addEventListener('change', (e) => {
         if(!isMaster) return;
-        currentMode = e.target.value;
-        tcIsRunning = false; cdIsRunning = false; 
+        currentMode = e.target.value; tcIsRunning = false; cdIsRunning = false; 
         document.querySelectorAll('.control-group').forEach(el => el.classList.remove('active'));
         document.getElementById('ctrl-' + currentMode).classList.add('active');
         broadcastState();
@@ -555,7 +576,7 @@
         if(!isMaster) return;
         tcIsRunning = false; tcAccumulatedMs = 0; tcBaseTime = Date.now(); broadcastState();
     });
-    fpsSelect.addEventListener('change', (e) => {
+    document.getElementById('fpsSelect').addEventListener('change', (e) => {
         if(!isMaster) return;
         fps = parseFloat(e.target.value); isDropFrame = (fps === 29.97);
         tcIsRunning = false; tcAccumulatedMs = 0; broadcastState();
@@ -564,7 +585,7 @@
 
     document.getElementById('cdStart').addEventListener('click', () => {
         if(cdIsRunning || !isMaster) return;
-        if(cdRemainingMs === 0) cdRemainingMs = ((parseInt(cdMinInput.value)||0)*60 + parseInt(cdSecInput.value)||0) * 1000;
+        if(cdRemainingMs === 0) cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
         if(cdRemainingMs <= 0) return;
         cdTargetTime = Date.now() + cdRemainingMs; cdIsRunning = true; broadcastState();
     });
@@ -575,26 +596,23 @@
     });
     document.getElementById('cdReset').addEventListener('click', () => {
         if(!isMaster) return;
-        cdIsRunning = false; cdRemainingMs = ((parseInt(cdMinInput.value)||0)*60 + parseInt(cdSecInput.value)||0) * 1000;
+        cdIsRunning = false; cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
         broadcastState();
     });
 
-
     // ==========================================
-    // 5. 全螢幕完美置中與等比例放大邏輯
+    // 5. 雙重全螢幕處理 (相容原生與 iOS 偽全螢幕)
     // ==========================================
+    const displayContainer = document.getElementById('displayContainer');
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
+    let isFakeFullscreen = false;
 
     function applyStretch() {
-        if (document.fullscreenElement) {
+        if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
-            // 抓取原本字體的絕對寬高
             const rect = stretchWrapper.getBoundingClientRect();
-            // 根據視窗長寬比，計算出不讓字體被切斷的最大「等比例」縮放值
             const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.95;
-            
-            // 使用均勻縮放 (scale) 配合 Flexbox，保證畫面絕對置中不變形
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
         } else {
@@ -603,13 +621,28 @@
         }
     }
 
+    function enableFakeFullscreen() {
+        isFakeFullscreen = true; displayContainer.classList.add('fake-fullscreen'); applyStretch();
+    }
+    function disableFakeFullscreen() {
+        isFakeFullscreen = false; displayContainer.classList.remove('fake-fullscreen'); applyStretch();
+    }
+
     fsBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) document.getElementById('displayContainer').requestFullscreen().catch(e => console.error(e));
-        else document.exitFullscreen();
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !isFakeFullscreen) {
+            if (displayContainer.requestFullscreen) displayContainer.requestFullscreen().catch(() => enableFakeFullscreen());
+            else if (displayContainer.webkitRequestFullscreen) displayContainer.webkitRequestFullscreen();
+            else enableFakeFullscreen();
+        } else {
+            if (document.fullscreenElement) document.exitFullscreen();
+            else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
+            else if (isFakeFullscreen) disableFakeFullscreen();
+        }
     });
     
     document.addEventListener('fullscreenchange', applyStretch);
-    window.addEventListener('resize', () => { if(document.fullscreenElement) applyStretch(); });
+    document.addEventListener('webkitfullscreenchange', applyStretch);
+    window.addEventListener('resize', applyStretch);
 
 </script>
 </body>
