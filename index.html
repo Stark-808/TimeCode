@@ -77,7 +77,7 @@
         transform-origin: center center; width: 100%;
     }
 
-    /* 字體巨量化：保留上一版的 20rem */
+    /* 字體巨量化：保留 20rem */
     .time-text {
         font-family: 'Digital-7 Mono', sans-serif; font-size: 20rem; letter-spacing: 2px;
         white-space: nowrap; color: #00ff00; line-height: 0.9; transition: color 0.3s;
@@ -89,7 +89,7 @@
         text-shadow: 0 0 35px rgba(255, 51, 51, 1), 0 0 15px rgba(255, 51, 51, 0.8) !important;
     }
 
-    /* === 倒數計時進度條設計 (切齊底部、加粗、由左至右縮減) === */
+    /* === 倒數計時進度條設計 === */
     .progress-container {
         position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; 
         background-color: #111; display: none; justify-content: flex-end; 
@@ -105,7 +105,7 @@
     /* 5%~0%：紅色 */
     .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.6); }
 
-    /* === 全螢幕閃爍動畫 (背景紅 + 黑字反白) === */
+    /* === 全螢幕閃爍動畫 === */
     @keyframes flashBg {
         0%, 100% { background-color: #000; }
         50% { background-color: #ff3333; }
@@ -162,7 +162,6 @@
     body.device-tablet button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
     body.device-tablet .display-container { border: none; padding: 0; width: 100vw; height: 50vh; margin-top: 20px; }
     
-    /* 平板/手機模式字體極致化 */
     body.device-tablet .time-text { font-size: 30vw; } 
     body.device-tablet .user-bits { font-size: 7vw; }
 
@@ -206,7 +205,7 @@
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
-                    <!-- 預設直接選擇現在時間 (System Clock) -->
+                    <!-- 預設選擇現在時間 (System Clock) -->
                     <select id="mainMode">
                         <option value="clock" selected>SYSTEM CLOCK</option>
                         <option value="countdown">COUNTDOWN TIMER</option>
@@ -238,9 +237,11 @@
                 <label>>>> SYNC WITH SYSTEM NTP CLOCK <<<</label>
             </div>
 
+            <!-- 新增獨立 SET 按鈕的倒數計時控制面板 -->
             <div class="control-group" id="ctrl-countdown">
                 <input type="number" id="cdMin" min="0" value="0" style="width:50px;"><label>MIN</label>
                 <input type="number" id="cdSec" min="0" max="59" value="0" style="width:50px;"><label>SEC</label>
+                <button id="cdSet" class="cmd-btn" style="border-color:#00aaff; color:#00aaff;">SET</button>
                 <button id="cdStart" class="cmd-btn play-btn">GO</button>
                 <button id="cdStop" class="cmd-btn stop-btn">HALT</button>
                 <button id="cdReset" class="cmd-btn reset-btn">CLEAR</button>
@@ -352,6 +353,7 @@
             let ms = cdRemainingMs;
             if (cdIsRunning) ms = cdTargetTime - now; 
             
+            // CLEAR 觸發後，這段邏輯會強制畫面顯示綠色的 00:00 與空進度條
             if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) {
                 timeDisplay.textContent = "00:00";
                 timeDisplay.classList.remove('overtime');
@@ -509,7 +511,7 @@
     });
 
     // ==========================================
-    // 4. 控制面板事件
+    // 4. 控制面板事件 (加入獨立 SET 邏輯)
     // ==========================================
     document.getElementById('mainMode').addEventListener('change', (e) => {
         if(!isMaster) return;
@@ -539,15 +541,21 @@
     });
     ubInput.addEventListener('input', () => { if(isMaster) broadcastState(); });
 
+    // --- 倒數計時專用按鈕邏輯 ---
+
+    // SET 按鈕：純粹設定時間，不開始跑
+    document.getElementById('cdSet').addEventListener('click', () => {
+        if(!isMaster) return;
+        cdIsRunning = false; 
+        cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
+        cdTotalMs = cdRemainingMs; 
+        broadcastState();
+    });
+
+    // GO 按鈕：純粹開始計時，從目前的 cdRemainingMs 往下扣
     document.getElementById('cdStart').addEventListener('click', () => {
         if(cdIsRunning || !isMaster) return;
-        if(cdRemainingMs === 0) {
-            cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
-            cdTotalMs = cdRemainingMs; 
-        } else if (cdTotalMs === 0) {
-            cdTotalMs = cdRemainingMs; 
-        }
-        if(cdRemainingMs <= 0) return;
+        if(cdRemainingMs <= 0) return; // 如果時間是0或小於0，不給跑
         cdTargetTime = Date.now() + cdRemainingMs; 
         cdIsRunning = true; 
         broadcastState();
@@ -560,17 +568,17 @@
         broadcastState();
     });
 
+    // CLEAR 按鈕：完全歸零
     document.getElementById('cdReset').addEventListener('click', () => {
         if(!isMaster) return;
         cdIsRunning = false; 
-        cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
-        cdTotalMs = cdRemainingMs; 
-        if (cdRemainingMs === 0) { cdTotalMs = 0; }
+        cdRemainingMs = 0; 
+        cdTotalMs = 0; 
         broadcastState();
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 (以橫向滿版縮減 15% 為絕對基準)
+    // 5. 雙重全螢幕處理 (全模式統一安全極限防護)
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -581,20 +589,20 @@
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
             
-            // 【核心修改】：精準落實您的要求「以橫向為基準調整為滿版後去縮減百分之十五」
-            // 即: 直接使用螢幕寬度的 85% 作為唯一縮放基準。
+            // 基礎設定：以橫向為基準調整為滿版後去縮減百分之十五 (取 85%)
             let scale = (window.innerWidth / rect.width) * 0.85;
             
-            // 【繼承上一版設定】：倒數計時模式的專屬放大 1.5 倍
+            // 倒數計時模式專屬放大 1.5 倍
             if (currentMode === 'countdown') {
                 scale *= 1.5;
-                
-                // 【安全極限防護】：為了避免倒數計時放大 1.5 倍後破圖超出螢幕
-                // 限制最大寬度為螢幕的 95%，最大高度為 85% (留空間給進度條)
-                let maxSafeScaleW = (window.innerWidth * 0.95) / rect.width;
-                let maxSafeScaleH = (window.innerHeight * 0.85) / rect.height;
-                scale = Math.min(scale, maxSafeScaleW, maxSafeScaleH);
             }
+
+            // 【全局極限安全防護】
+            // 無論是哪一種模式 (Clock, Timecode 還是 Countdown)
+            // 都強制限制最大寬度不可超過螢幕 95%，最大高度不可超過 85%
+            let maxSafeScaleW = (window.innerWidth * 0.95) / rect.width;
+            let maxSafeScaleH = (window.innerHeight * 0.85) / rect.height;
+            scale = Math.min(scale, maxSafeScaleW, maxSafeScaleH);
 
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
