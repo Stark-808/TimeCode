@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Auto-Scale Edition)</title>
+<title>Pro Network TimeCode (Max Display Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -69,7 +69,7 @@
     .display-container {
         position: relative; background-color: #000; padding: 40px 80px; border: 2px solid #333;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: all 0.3s; margin-bottom: 20px; width: 85%; max-width: 1400px;
+        transition: all 0.3s; margin-bottom: 20px; width: 90%; max-width: 1600px;
     }
 
     .stretch-wrapper {
@@ -77,16 +77,16 @@
         transform-origin: center center; width: 100%;
     }
 
-    /* 數字字體極大化 */
+    /* 字體巨量化：從 15rem 提升到 20rem */
     .time-text {
-        font-family: 'Digital-7 Mono', sans-serif; font-size: 15rem; letter-spacing: 2px;
+        font-family: 'Digital-7 Mono', sans-serif; font-size: 20rem; letter-spacing: 2px;
         white-space: nowrap; color: #00ff00; line-height: 0.9; transition: color 0.3s;
     }
     
     /* 超時紅字發光狀態 */
     .time-text.overtime {
         color: #ff3333 !important;
-        text-shadow: 0 0 25px rgba(255, 51, 51, 0.9), 0 0 10px rgba(255, 51, 51, 0.5) !important;
+        text-shadow: 0 0 35px rgba(255, 51, 51, 1), 0 0 15px rgba(255, 51, 51, 0.8) !important;
     }
 
     /* === 倒數計時進度條設計 (切齊底部、加粗、由左至右縮減) === */
@@ -117,7 +117,7 @@
     .flash-active { animation: flashBg 0.5s 2; }
     .flash-active .time-text { animation: flashText 0.5s 2 !important; }
 
-    .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 3.5rem; color: #00cc00; letter-spacing: 5px; margin-top: 15px; }
+    .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 4rem; color: #00cc00; letter-spacing: 5px; margin-top: 15px; }
 
     .fullscreen-btn {
         position: absolute; top: 10px; right: 10px; background: transparent; color: #555;
@@ -161,7 +161,9 @@
     body.device-tablet input#joinCodeInput { width: 120px; font-size: 1.5rem; text-align: center; }
     body.device-tablet button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
     body.device-tablet .display-container { border: none; padding: 0; width: 100vw; height: 50vh; margin-top: 20px; }
-    body.device-tablet .time-text { font-size: 24vw; } 
+    
+    /* 平板/手機模式字體開到極致 30vw */
+    body.device-tablet .time-text { font-size: 30vw; } 
     body.device-tablet .user-bits { font-size: 7vw; }
 
 </style>
@@ -204,7 +206,6 @@
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
-                    <!-- 預設直接選擇現在時間 (System Clock) -->
                     <select id="mainMode">
                         <option value="clock" selected>SYSTEM CLOCK</option>
                         <option value="countdown">COUNTDOWN TIMER</option>
@@ -222,7 +223,6 @@
         <div class="display-container" id="displayContainer">
             <button class="fullscreen-btn" id="fsBtn">[ FULLSCREEN ]</button>
             <div class="stretch-wrapper" id="stretchWrapper">
-                <!-- 預設值顯示 -->
                 <div class="time-text" id="timeDisplay">--:--:--</div>
                 <div class="user-bits" id="userBitsDisplay" style="display: none;">UB: 00 00 00 00</div>
             </div>
@@ -233,8 +233,6 @@
         </div>
 
         <div class="controls-panel">
-            
-            <!-- 將 System Clock 設為預設 Active 面板 -->
             <div class="control-group active" id="ctrl-clock">
                 <label>>>> SYNC WITH SYSTEM NTP CLOCK <<<</label>
             </div>
@@ -413,7 +411,7 @@
     }, 30);
 
     // ==========================================
-    // 3. MQTT 網路通訊與廣播時間郵戳
+    // 3. MQTT 網路通訊
     // ==========================================
     const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; 
     let mqttClient = null;
@@ -447,7 +445,6 @@
                 if (!isMaster && topic.endsWith('/state')) {
                     if (data.masterTimestamp) clockOffset = data.masterTimestamp - Date.now();
 
-                    // 當接收端收到模式切換時，同步刷新全螢幕文字縮放比例
                     if (currentMode !== data.mode) {
                         currentMode = data.mode;
                         applyStretch(); 
@@ -516,14 +513,14 @@
     });
 
     // ==========================================
-    // 4. 控制面板事件 (只在 Master 下運作)
+    // 4. 控制面板事件
     // ==========================================
     document.getElementById('mainMode').addEventListener('change', (e) => {
         if(!isMaster) return;
         currentMode = e.target.value; tcIsRunning = false; cdIsRunning = false; 
         document.querySelectorAll('.control-group').forEach(el => el.classList.remove('active'));
         document.getElementById('ctrl-' + currentMode).classList.add('active');
-        applyStretch(); // 主控端切換模式時自動重新計算全螢幕縮放比例
+        applyStretch(); 
         broadcastState();
     });
 
@@ -546,17 +543,14 @@
     });
     ubInput.addEventListener('input', () => { if(isMaster) broadcastState(); });
 
-    // --- 倒數計時按鈕更新邏輯 ---
     document.getElementById('cdStart').addEventListener('click', () => {
         if(cdIsRunning || !isMaster) return;
-        
         if(cdRemainingMs === 0) {
             cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
             cdTotalMs = cdRemainingMs; 
         } else if (cdTotalMs === 0) {
             cdTotalMs = cdRemainingMs; 
         }
-        
         if(cdRemainingMs <= 0) return;
         cdTargetTime = Date.now() + cdRemainingMs; 
         cdIsRunning = true; 
@@ -575,13 +569,12 @@
         cdIsRunning = false; 
         cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
         cdTotalMs = cdRemainingMs; 
-        
         if (cdRemainingMs === 0) { cdTotalMs = 0; }
         broadcastState();
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 (自動縮放機制)
+    // 5. 雙重全螢幕處理 (超極限自動縮放機制)
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -592,9 +585,20 @@
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
             
-            // 【核心修改】：純粹依照橫向(Width)為基準縮放，不限制直向(Height)。
-            // 無論哪種模式，統一將充滿整個螢幕寬度的比例縮小 15% (乘上 0.85)
-            let scale = (window.innerWidth / rect.width) * 0.85;
+            // 【安全極限邊界】：抓取螢幕寬度的 95%，與螢幕高度的 85% (預留 15% 給進度條與邊距)
+            let scaleW = (window.innerWidth * 0.95) / rect.width;
+            let scaleH = (window.innerHeight * 0.85) / rect.height;
+            
+            // 取寬或高中較小的一個，確保字體「絕對不會被裁切出螢幕」
+            let scale = Math.min(scaleW, scaleH);
+            
+            // 【倒數計時專屬 1.5 倍放大】
+            if (currentMode === 'countdown') {
+                // 強制放大 1.5 倍，但加上「高度防裁切保護機制 (最高到 95% 高度)」
+                let boostScale = scale * 1.5;
+                let maxSafeScale = (window.innerHeight * 0.95) / rect.height;
+                scale = Math.min(boostScale, maxSafeScale);
+            }
 
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
@@ -619,7 +623,6 @@
         }
     });
     
-    // Resize監聽器會自動偵測裝置旋轉或視窗大小改變，達到自動調整大小的目的
     document.addEventListener('fullscreenchange', applyStretch);
     document.addEventListener('webkitfullscreenchange', applyStretch);
     window.addEventListener('resize', applyStretch);
