@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Max Display Edition)</title>
+<title>Pro Network TimeCode (Perfect Scale Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -74,7 +74,9 @@
 
     .stretch-wrapper {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transform-origin: center center; width: 100%;
+        transform-origin: center center; 
+        /* 核心修正：將 width 從 100% 改為 max-content，讓程式能精準測出巨量字體的真實像素寬度 */
+        width: max-content; 
     }
 
     /* 字體巨量化：保留 20rem */
@@ -587,10 +589,14 @@
     function applyStretch() {
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
-            const rect = stretchWrapper.getBoundingClientRect();
             
-            // 基礎設定：以橫向為基準調整為滿版後去縮減百分之十五 (取 85%)
-            let scale = (window.innerWidth / rect.width) * 0.85;
+            // 【核心修正】：使用 offsetWidth 獲取無縮放狀態下的「真實內容像素大小」
+            // 因為 CSS 改成了 width: max-content，所以不會再誤判為螢幕的寬度
+            const rectW = stretchWrapper.offsetWidth;
+            const rectH = stretchWrapper.offsetHeight;
+            
+            // 基礎設定：以橫向「真實寬度」為基準調整為滿版後，再去縮減百分之十五 (取 85%)
+            let scale = (window.innerWidth / rectW) * 0.85;
             
             // 倒數計時模式專屬放大 1.5 倍
             if (currentMode === 'countdown') {
@@ -599,9 +605,10 @@
 
             // 【全局極限安全防護】
             // 無論是哪一種模式 (Clock, Timecode 還是 Countdown)
-            // 都強制限制最大寬度不可超過螢幕 95%，最大高度不可超過 85%
-            let maxSafeScaleW = (window.innerWidth * 0.95) / rect.width;
-            let maxSafeScaleH = (window.innerHeight * 0.85) / rect.height;
+            // 都強制限制最大寬度不可超過螢幕 95%，最大高度不可超過 85% (保留空間給進度條與邊距)
+            let maxSafeScaleW = (window.innerWidth * 0.95) / rectW;
+            let maxSafeScaleH = (window.innerHeight * 0.85) / rectH;
+            
             scale = Math.min(scale, maxSafeScaleW, maxSafeScaleH);
 
             stretchWrapper.style.transform = `scale(${scale})`;
