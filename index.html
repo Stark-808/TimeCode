@@ -77,7 +77,7 @@
         transform-origin: center center; width: 100%;
     }
 
-    /* 字體巨量化：從 15rem 提升到 20rem */
+    /* 字體巨量化：保留上一版的 20rem */
     .time-text {
         font-family: 'Digital-7 Mono', sans-serif; font-size: 20rem; letter-spacing: 2px;
         white-space: nowrap; color: #00ff00; line-height: 0.9; transition: color 0.3s;
@@ -162,7 +162,7 @@
     body.device-tablet button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
     body.device-tablet .display-container { border: none; padding: 0; width: 100vw; height: 50vh; margin-top: 20px; }
     
-    /* 平板/手機模式字體開到極致 30vw */
+    /* 平板/手機模式字體極致化 */
     body.device-tablet .time-text { font-size: 30vw; } 
     body.device-tablet .user-bits { font-size: 7vw; }
 
@@ -206,6 +206,7 @@
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
+                    <!-- 預設直接選擇現在時間 (System Clock) -->
                     <select id="mainMode">
                         <option value="clock" selected>SYSTEM CLOCK</option>
                         <option value="countdown">COUNTDOWN TIMER</option>
@@ -327,7 +328,6 @@
         return `${pad(h)}:${pad(m)}:${pad(s)}${isDF ? ';' : ':'}${pad(f)}`;
     }
 
-    // 螢幕更新引擎 (每 30ms 重繪一次)
     setInterval(() => {
         let now = getSyncedTime(); 
 
@@ -376,7 +376,6 @@
                 }, 1000); 
             }
 
-            // === 百分比進度條與變色邏輯 ===
             if (isOvertime) {
                 timeDisplay.classList.add('overtime');
                 progressBar.style.width = '0%';
@@ -410,9 +409,6 @@
         }
     }, 30);
 
-    // ==========================================
-    // 3. MQTT 網路通訊
-    // ==========================================
     const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; 
     let mqttClient = null;
     let currentRoomCode = '';
@@ -574,7 +570,7 @@
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 (超極限自動縮放機制)
+    // 5. 雙重全螢幕處理 (以橫向滿版縮減 15% 為絕對基準)
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -585,19 +581,19 @@
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
             
-            // 【安全極限邊界】：抓取螢幕寬度的 95%，與螢幕高度的 85% (預留 15% 給進度條與邊距)
-            let scaleW = (window.innerWidth * 0.95) / rect.width;
-            let scaleH = (window.innerHeight * 0.85) / rect.height;
+            // 【核心修改】：精準落實您的要求「以橫向為基準調整為滿版後去縮減百分之十五」
+            // 即: 直接使用螢幕寬度的 85% 作為唯一縮放基準。
+            let scale = (window.innerWidth / rect.width) * 0.85;
             
-            // 取寬或高中較小的一個，確保字體「絕對不會被裁切出螢幕」
-            let scale = Math.min(scaleW, scaleH);
-            
-            // 【倒數計時專屬 1.5 倍放大】
+            // 【繼承上一版設定】：倒數計時模式的專屬放大 1.5 倍
             if (currentMode === 'countdown') {
-                // 強制放大 1.5 倍，但加上「高度防裁切保護機制 (最高到 95% 高度)」
-                let boostScale = scale * 1.5;
-                let maxSafeScale = (window.innerHeight * 0.95) / rect.height;
-                scale = Math.min(boostScale, maxSafeScale);
+                scale *= 1.5;
+                
+                // 【安全極限防護】：為了避免倒數計時放大 1.5 倍後破圖超出螢幕
+                // 限制最大寬度為螢幕的 95%，最大高度為 85% (留空間給進度條)
+                let maxSafeScaleW = (window.innerWidth * 0.95) / rect.width;
+                let maxSafeScaleH = (window.innerHeight * 0.85) / rect.height;
+                scale = Math.min(scale, maxSafeScaleW, maxSafeScaleH);
             }
 
             stretchWrapper.style.transform = `scale(${scale})`;
