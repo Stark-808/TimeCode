@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Smart Alert Edition)</title>
+<title>Pro Network TimeCode (Auto-Scale Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -290,7 +290,6 @@
 
     function pad(num) { return num.toString().padStart(2, '0'); }
 
-    // 系統預設模式改為現在時間 (Clock)
     let currentMode = 'clock'; 
     let tcIsRunning = false; let tcBaseTime = 0; let tcAccumulatedMs = 0;
     let fps = 24; let isDropFrame = false;
@@ -355,7 +354,6 @@
             let ms = cdRemainingMs;
             if (cdIsRunning) ms = cdTargetTime - now; 
             
-            // 倒數計時若尚未輸入時間，呈現 00:00 與空進度條
             if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) {
                 timeDisplay.textContent = "00:00";
                 timeDisplay.classList.remove('overtime');
@@ -372,7 +370,6 @@
             let totalSec = isOvertime ? Math.floor(absMs / 1000) : Math.ceil(absMs / 1000);
             timeDisplay.textContent = (isOvertime ? "+" : "") + `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
             
-            // 全螢幕閃爍動畫邏輯
             if (isOvertime && cdIsRunning && !hasFlashed) {
                 hasFlashed = true;
                 displayContainer.classList.add('flash-active');
@@ -393,7 +390,6 @@
                     let percent = (ms / cdTotalMs) * 100;
                     progressBar.style.width = percent + '%';
                     
-                    // 20% ~ 5% 黃色，小於等於 5% 紅色
                     if (percent <= 5) {
                         progressBar.className = 'progress-bar danger';
                     } else if (percent <= 20) {
@@ -585,7 +581,7 @@
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 (保留進度條的視覺比例與放大機制)
+    // 5. 雙重全螢幕處理 (自動縮放機制)
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -595,13 +591,10 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
-            // 基本縮放比例，留空間給底部進度條與邊界
-            let scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.85;
             
-            // 【特別處理】：如果是倒數計時模式，數字單獨再放大 50% (乘以 1.5 倍)
-            if (currentMode === 'countdown') {
-                scale *= 1.5;
-            }
+            // 【核心修改】：純粹依照橫向(Width)為基準縮放，不限制直向(Height)。
+            // 無論哪種模式，統一將充滿整個螢幕寬度的比例縮小 15% (乘上 0.85)
+            let scale = (window.innerWidth / rect.width) * 0.85;
 
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
@@ -626,6 +619,7 @@
         }
     });
     
+    // Resize監聽器會自動偵測裝置旋轉或視窗大小改變，達到自動調整大小的目的
     document.addEventListener('fullscreenchange', applyStretch);
     document.addEventListener('webkitfullscreenchange', applyStretch);
     window.addEventListener('resize', applyStretch);
