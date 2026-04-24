@@ -204,11 +204,11 @@
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
-                    <!-- 預設直接選擇倒數計時器 -->
+                    <!-- 預設直接選擇現在時間 (System Clock) -->
                     <select id="mainMode">
-                        <option value="countdown" selected>COUNTDOWN TIMER</option>
+                        <option value="clock" selected>SYSTEM CLOCK</option>
+                        <option value="countdown">COUNTDOWN TIMER</option>
                         <option value="timecode">SMPTE TIMECODE</option>
-                        <option value="clock">SYSTEM CLOCK</option>
                     </select>
                 </div>
             </div>
@@ -222,8 +222,8 @@
         <div class="display-container" id="displayContainer">
             <button class="fullscreen-btn" id="fsBtn">[ FULLSCREEN ]</button>
             <div class="stretch-wrapper" id="stretchWrapper">
-                <!-- 預設值顯示為 00:00 -->
-                <div class="time-text" id="timeDisplay">00:00</div>
+                <!-- 預設值顯示 -->
+                <div class="time-text" id="timeDisplay">--:--:--</div>
                 <div class="user-bits" id="userBitsDisplay" style="display: none;">UB: 00 00 00 00</div>
             </div>
             <!-- 進度條 -->
@@ -234,9 +234,12 @@
 
         <div class="controls-panel">
             
-            <!-- 將倒數計時設為預設 Active 面板 -->
-            <div class="control-group active" id="ctrl-countdown">
-                <!-- 預設時間改為 0分 0秒 -->
+            <!-- 將 System Clock 設為預設 Active 面板 -->
+            <div class="control-group active" id="ctrl-clock">
+                <label>>>> SYNC WITH SYSTEM NTP CLOCK <<<</label>
+            </div>
+
+            <div class="control-group" id="ctrl-countdown">
                 <input type="number" id="cdMin" min="0" value="0" style="width:50px;"><label>MIN</label>
                 <input type="number" id="cdSec" min="0" max="59" value="0" style="width:50px;"><label>SEC</label>
                 <button id="cdStart" class="cmd-btn play-btn">GO</button>
@@ -257,10 +260,6 @@
                 <button id="tcReset" class="cmd-btn reset-btn">RESET</button>
                 <label style="margin-left: 20px;">USER BITS:</label>
                 <input type="text" id="ubInput" value="20260423" maxlength="8">
-            </div>
-
-            <div class="control-group" id="ctrl-clock">
-                <label>>>> SYNC WITH SYSTEM NTP CLOCK <<<</label>
             </div>
         </div>
     </div>
@@ -286,17 +285,13 @@
         document.getElementById('myRoleText').textContent = isMaster ? "MASTER (主控端)" : "SLAVE (接收端)";
         document.getElementById('displayMyName').textContent = myDeviceName;
 
-        if (!isMaster) {
-            document.getElementById('timeDisplay').textContent = "00:00";
-            document.getElementById('userBitsDisplay').style.display = 'none';
-        }
         connectNetwork();
     }
 
     function pad(num) { return num.toString().padStart(2, '0'); }
 
-    // 系統預設模式改為倒數計時
-    let currentMode = 'countdown'; 
+    // 系統預設模式改為現在時間 (Clock)
+    let currentMode = 'clock'; 
     let tcIsRunning = false; let tcBaseTime = 0; let tcAccumulatedMs = 0;
     let fps = 24; let isDropFrame = false;
 
@@ -360,7 +355,7 @@
             let ms = cdRemainingMs;
             if (cdIsRunning) ms = cdTargetTime - now; 
             
-            // 【預設畫面判斷】若尚未輸入時間，或已經清除，呈現 00:00 與空進度條
+            // 倒數計時若尚未輸入時間，呈現 00:00 與空進度條
             if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) {
                 timeDisplay.textContent = "00:00";
                 timeDisplay.classList.remove('overtime');
@@ -456,7 +451,12 @@
                 if (!isMaster && topic.endsWith('/state')) {
                     if (data.masterTimestamp) clockOffset = data.masterTimestamp - Date.now();
 
-                    currentMode = data.mode;
+                    // 當接收端收到模式切換時，同步刷新全螢幕文字縮放比例
+                    if (currentMode !== data.mode) {
+                        currentMode = data.mode;
+                        applyStretch(); 
+                    }
+
                     if(data.mode === 'timecode') {
                         fps = data.fps; isDropFrame = (fps === 29.97);
                         tcIsRunning = data.tcIsRunning; tcBaseTime = data.tcBaseTime; tcAccumulatedMs = data.tcAccumulatedMs;
@@ -527,6 +527,7 @@
         currentMode = e.target.value; tcIsRunning = false; cdIsRunning = false; 
         document.querySelectorAll('.control-group').forEach(el => el.classList.remove('active'));
         document.getElementById('ctrl-' + currentMode).classList.add('active');
+        applyStretch(); // 主控端切換模式時自動重新計算全螢幕縮放比例
         broadcastState();
     });
 
@@ -560,7 +561,6 @@
             cdTotalMs = cdRemainingMs; 
         }
         
-        // 防呆：若時間為0，直接 return
         if(cdRemainingMs <= 0) return;
         cdTargetTime = Date.now() + cdRemainingMs; 
         cdIsRunning = true; 
@@ -580,14 +580,12 @@
         cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
         cdTotalMs = cdRemainingMs; 
         
-        // 若輸入框都是 0，則直接歸零系統
         if (cdRemainingMs === 0) { cdTotalMs = 0; }
-        
         broadcastState();
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 
+    // 5. 雙重全螢幕處理 (保留進度條的視覺比例與放大機制)
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -597,8 +595,14 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             const rect = stretchWrapper.getBoundingClientRect();
-            // 縮小為 0.85 比例，留空間給底部進度條與邊界，讓數字維持在正中央
-            const scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.85;
+            // 基本縮放比例，留空間給底部進度條與邊界
+            let scale = Math.min(window.innerWidth / rect.width, window.innerHeight / rect.height) * 0.85;
+            
+            // 【特別處理】：如果是倒數計時模式，數字單獨再放大 50% (乘以 1.5 倍)
+            if (currentMode === 'countdown') {
+                scale *= 1.5;
+            }
+
             stretchWrapper.style.transform = `scale(${scale})`;
             fsBtn.textContent = '[ EXIT ]';
         } else {
