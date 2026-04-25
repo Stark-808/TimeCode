@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Perfect Scale Edition)</title>
+<title>Pro Network TimeCode (Memory Recovery Edition)</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -75,11 +75,10 @@
     .stretch-wrapper {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         transform-origin: center center; 
-        /* 核心修正：將 width 從 100% 改為 max-content，讓程式能精準測出巨量字體的真實像素寬度 */
         width: max-content; 
     }
 
-    /* 字體巨量化：保留 20rem */
+    /* 字體巨量化 */
     .time-text {
         font-family: 'Digital-7 Mono', sans-serif; font-size: 20rem; letter-spacing: 2px;
         white-space: nowrap; color: #00ff00; line-height: 0.9; transition: color 0.3s;
@@ -102,9 +101,7 @@
         box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
         transition: width 0.1s linear, background-color 0.5s;
     }
-    /* 20%~5%：黃色 */
     .progress-bar.warning { background-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
-    /* 5%~0%：紅色 */
     .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.6); }
 
     /* === 全螢幕閃爍動畫 === */
@@ -203,14 +200,12 @@
             <div class="panel-section master-only">
                 <div class="panel-row">
                     <label>ROOM CODE:</label>
-                    <!-- 主控端專屬：可手動輸入房間號並重新連線，或是自動建立新房間 -->
                     <input type="text" id="masterRoomInput" maxlength="5" style="width: 80px; font-size: 1.2rem; text-align: center; color: #ffcc00; font-weight: bold; background: #001a33; border: 1px solid #ffcc00; outline: none;">
                     <button class="cmd-btn" id="masterRejoinBtn" style="border-color:#00aaff; color:#00aaff; font-size: 0.9rem; padding: 5px 10px;">REJOIN</button>
                     <button class="cmd-btn" id="masterNewRoomBtn" style="border-color:#ffcc00; color:#ffcc00; font-size: 0.9rem; padding: 5px 10px;">NEW</button>
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
-                    <!-- 預設選擇現在時間 (System Clock) -->
                     <select id="mainMode">
                         <option value="clock" selected>SYSTEM CLOCK</option>
                         <option value="countdown">COUNTDOWN TIMER</option>
@@ -357,7 +352,6 @@
             let ms = cdRemainingMs;
             if (cdIsRunning) ms = cdTargetTime - now; 
             
-            // CLEAR 觸發後，這段邏輯會強制畫面顯示綠色的 00:00 與空進度條
             if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) {
                 timeDisplay.textContent = "00:00";
                 timeDisplay.classList.remove('overtime');
@@ -421,22 +415,54 @@
     let connectedClients = {}; 
     let heartbeatInterval = null;
 
-    // === 主控端房間切換與連線邏輯 ===
+    // === 主控端房間切換與連線邏輯 (包含記憶恢復功能) ===
     function changeMasterRoom(newCode) {
         if (!isMaster || !mqttClient) return;
         
-        if (currentRoomCode) {
+        if (currentRoomCode && currentRoomCode !== newCode) {
             mqttClient.unsubscribe(`matc/room_${currentRoomCode}/heartbeat`);
         }
         currentRoomCode = newCode;
         document.getElementById('masterRoomInput').value = currentRoomCode;
+        
+        // 儲存至 SessionStorage，防止 F5 網頁重整後房間遺失
+        sessionStorage.setItem('matc_last_room', currentRoomCode);
+        
         mqttClient.subscribe(`matc/room_${currentRoomCode}/heartbeat`);
         
-        // 清空並重新整理設備連線清單
+        // === 讀取 LocalStorage 狀態快取 (恢復斷線前的倒數與設定) ===
+        let savedState = localStorage.getItem('matc_state_' + currentRoomCode);
+        if (savedState) {
+            try {
+                let data = JSON.parse(savedState);
+                currentMode = data.mode || 'clock';
+                fps = data.fps || 24;
+                tcIsRunning = data.tcIsRunning || false;
+                tcBaseTime = data.tcBaseTime || 0;
+                tcAccumulatedMs = data.tcAccumulatedMs || 0;
+                cdIsRunning = data.cdIsRunning || false;
+                cdTargetTime = data.cdTargetTime || 0;
+                cdRemainingMs = data.cdRemainingMs || 0;
+                cdTotalMs = data.cdTotalMs || 0;
+                
+                document.getElementById('mainMode').value = currentMode;
+                document.getElementById('fpsSelect').value = fps;
+                if(data.ub) {
+                    document.getElementById('ubInput').value = data.ub.replace('UB: ', '').replace(/ /g, '');
+                }
+                
+                document.querySelectorAll('.control-group').forEach(el => el.classList.remove('active'));
+                document.getElementById('ctrl-' + currentMode).classList.add('active');
+                applyStretch();
+            } catch(e) { console.error("狀態恢復失敗", e); }
+        } else {
+            // 全新房間，初始化數值
+            tcIsRunning = false; tcAccumulatedMs = 0; tcBaseTime = Date.now();
+            cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; cdTargetTime = 0;
+        }
+
         connectedClients = {}; 
         renderClientList();
-        
-        // 切換完房間後立即廣播當前狀態，讓該房間的接收端馬上同步
         broadcastState();
     }
 
@@ -447,13 +473,15 @@
         mqttClient.on('connect', () => {
             document.getElementById('netStatus').classList.add('online');
             if (isMaster) {
-                // 如果目前沒有代碼，就先自動生成一組
-                if (!currentRoomCode) {
+                // 如果是剛載入網頁，優先尋找 Session 中是否有剛才用的房間
+                let lastRoom = sessionStorage.getItem('matc_last_room');
+                if (lastRoom && !currentRoomCode) {
+                    currentRoomCode = lastRoom;
+                } else if (!currentRoomCode) {
                     currentRoomCode = Math.floor(10000 + Math.random() * 90000).toString();
                 }
-                document.getElementById('masterRoomInput').value = currentRoomCode;
-                mqttClient.subscribe(`matc/room_${currentRoomCode}/heartbeat`);
-                broadcastState();
+                // 切換至房間並嘗試恢復記憶
+                changeMasterRoom(currentRoomCode);
             }
         });
 
@@ -490,15 +518,21 @@
 
     function broadcastState() {
         if (isMaster && mqttClient && currentRoomCode && mqttClient.connected) {
-            const payload = JSON.stringify({
+            const payloadObj = {
                 masterTimestamp: Date.now(),
                 mode: currentMode, fps: fps,
                 tcIsRunning: tcIsRunning, tcBaseTime: tcBaseTime, tcAccumulatedMs: tcAccumulatedMs,
                 cdIsRunning: cdIsRunning, cdTargetTime: cdTargetTime, cdRemainingMs: cdRemainingMs,
                 cdTotalMs: cdTotalMs, 
                 ub: userBitsDisplay.textContent
-            });
-            mqttClient.publish(`matc/room_${currentRoomCode}/state`, payload, { qos: 0 });
+            };
+            const payload = JSON.stringify(payloadObj);
+            
+            // === 寫入本地記憶 (Local Storage) 作為斷線恢復快取 ===
+            localStorage.setItem('matc_state_' + currentRoomCode, payload);
+
+            // 加入 { retain: true } 讓 MQTT 伺服器永久記住最後一筆狀態，接收端晚加入也能馬上獲得同步
+            mqttClient.publish(`matc/room_${currentRoomCode}/state`, payload, { qos: 0, retain: true });
         }
     }
 
@@ -541,7 +575,6 @@
     // 4. 控制面板事件
     // ==========================================
 
-    // === 主控端房間管理按鈕綁定 ===
     document.getElementById('masterRejoinBtn').addEventListener('click', () => {
         if (!isMaster) return;
         const code = document.getElementById('masterRoomInput').value.trim();
@@ -583,7 +616,6 @@
     });
     ubInput.addEventListener('input', () => { if(isMaster) broadcastState(); });
 
-    // --- 倒數計時專用按鈕邏輯 ---
     document.getElementById('cdSet').addEventListener('click', () => {
         if(!isMaster) return;
         cdIsRunning = false; 
@@ -594,7 +626,7 @@
 
     document.getElementById('cdStart').addEventListener('click', () => {
         if(cdIsRunning || !isMaster) return;
-        if(cdRemainingMs <= 0) return; // 如果時間是0或小於0，不給跑
+        if(cdRemainingMs <= 0) return;
         cdTargetTime = Date.now() + cdRemainingMs; 
         cdIsRunning = true; 
         broadcastState();
@@ -616,7 +648,7 @@
     });
 
     // ==========================================
-    // 5. 雙重全螢幕處理 (全模式統一安全極限防護)
+    // 5. 雙重全螢幕處理
     // ==========================================
     const stretchWrapper = document.getElementById('stretchWrapper');
     const fsBtn = document.getElementById('fsBtn');
@@ -626,24 +658,14 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             
-            // 使用 offsetWidth 獲取無縮放狀態下的「真實內容像素大小」
             const rectW = stretchWrapper.offsetWidth;
             const rectH = stretchWrapper.offsetHeight;
             
-            // 基礎設定：以橫向「真實寬度」為基準調整為滿版後，再去縮減百分之十五 (取 85%)
             let scale = (window.innerWidth / rectW) * 0.85;
-            
-            // 倒數計時模式專屬放大 1.5 倍
-            if (currentMode === 'countdown') {
-                scale *= 1.5;
-            }
+            if (currentMode === 'countdown') { scale *= 1.5; }
 
-            // 【全局極限安全防護】
-            // 無論是哪一種模式 (Clock, Timecode 還是 Countdown)
-            // 都強制限制最大寬度不可超過螢幕 95%，最大高度不可超過 85% (保留空間給進度條與邊距)
             let maxSafeScaleW = (window.innerWidth * 0.95) / rectW;
             let maxSafeScaleH = (window.innerHeight * 0.85) / rectH;
-            
             scale = Math.min(scale, maxSafeScaleW, maxSafeScaleH);
 
             stretchWrapper.style.transform = `scale(${scale})`;
