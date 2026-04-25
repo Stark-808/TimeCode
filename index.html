@@ -203,7 +203,10 @@
             <div class="panel-section master-only">
                 <div class="panel-row">
                     <label>ROOM CODE:</label>
-                    <span class="highlight" id="roomCodeDisplay">Generating...</span>
+                    <!-- 主控端專屬：可手動輸入房間號並重新連線，或是自動建立新房間 -->
+                    <input type="text" id="masterRoomInput" maxlength="5" style="width: 80px; font-size: 1.2rem; text-align: center; color: #ffcc00; font-weight: bold; background: #001a33; border: 1px solid #ffcc00; outline: none;">
+                    <button class="cmd-btn" id="masterRejoinBtn" style="border-color:#00aaff; color:#00aaff; font-size: 0.9rem; padding: 5px 10px;">REJOIN</button>
+                    <button class="cmd-btn" id="masterNewRoomBtn" style="border-color:#ffcc00; color:#ffcc00; font-size: 0.9rem; padding: 5px 10px;">NEW</button>
                 </div>
                 <div class="panel-row">
                     <label>MODE:</label>
@@ -239,7 +242,6 @@
                 <label>>>> SYNC WITH SYSTEM NTP CLOCK <<<</label>
             </div>
 
-            <!-- 新增獨立 SET 按鈕的倒數計時控制面板 -->
             <div class="control-group" id="ctrl-countdown">
                 <input type="number" id="cdMin" min="0" value="0" style="width:50px;"><label>MIN</label>
                 <input type="number" id="cdSec" min="0" max="59" value="0" style="width:50px;"><label>SEC</label>
@@ -419,6 +421,25 @@
     let connectedClients = {}; 
     let heartbeatInterval = null;
 
+    // === 主控端房間切換與連線邏輯 ===
+    function changeMasterRoom(newCode) {
+        if (!isMaster || !mqttClient) return;
+        
+        if (currentRoomCode) {
+            mqttClient.unsubscribe(`matc/room_${currentRoomCode}/heartbeat`);
+        }
+        currentRoomCode = newCode;
+        document.getElementById('masterRoomInput').value = currentRoomCode;
+        mqttClient.subscribe(`matc/room_${currentRoomCode}/heartbeat`);
+        
+        // 清空並重新整理設備連線清單
+        connectedClients = {}; 
+        renderClientList();
+        
+        // 切換完房間後立即廣播當前狀態，讓該房間的接收端馬上同步
+        broadcastState();
+    }
+
     function connectNetwork() {
         if(mqttClient) mqttClient.end();
         mqttClient = mqtt.connect(MQTT_BROKER);
@@ -426,9 +447,13 @@
         mqttClient.on('connect', () => {
             document.getElementById('netStatus').classList.add('online');
             if (isMaster) {
-                currentRoomCode = Math.floor(10000 + Math.random() * 90000).toString();
-                document.getElementById('roomCodeDisplay').textContent = currentRoomCode;
+                // 如果目前沒有代碼，就先自動生成一組
+                if (!currentRoomCode) {
+                    currentRoomCode = Math.floor(10000 + Math.random() * 90000).toString();
+                }
+                document.getElementById('masterRoomInput').value = currentRoomCode;
                 mqttClient.subscribe(`matc/room_${currentRoomCode}/heartbeat`);
+                broadcastState();
             }
         });
 
@@ -513,8 +538,23 @@
     });
 
     // ==========================================
-    // 4. 控制面板事件 (加入獨立 SET 邏輯)
+    // 4. 控制面板事件
     // ==========================================
+
+    // === 主控端房間管理按鈕綁定 ===
+    document.getElementById('masterRejoinBtn').addEventListener('click', () => {
+        if (!isMaster) return;
+        const code = document.getElementById('masterRoomInput').value.trim();
+        if (code.length !== 5) { alert("請輸入 5 位數房間代碼以重新連線！"); return; }
+        changeMasterRoom(code);
+    });
+
+    document.getElementById('masterNewRoomBtn').addEventListener('click', () => {
+        if (!isMaster) return;
+        const newCode = Math.floor(10000 + Math.random() * 90000).toString();
+        changeMasterRoom(newCode);
+    });
+
     document.getElementById('mainMode').addEventListener('change', (e) => {
         if(!isMaster) return;
         currentMode = e.target.value; tcIsRunning = false; cdIsRunning = false; 
@@ -544,8 +584,6 @@
     ubInput.addEventListener('input', () => { if(isMaster) broadcastState(); });
 
     // --- 倒數計時專用按鈕邏輯 ---
-
-    // SET 按鈕：純粹設定時間，不開始跑
     document.getElementById('cdSet').addEventListener('click', () => {
         if(!isMaster) return;
         cdIsRunning = false; 
@@ -554,7 +592,6 @@
         broadcastState();
     });
 
-    // GO 按鈕：純粹開始計時，從目前的 cdRemainingMs 往下扣
     document.getElementById('cdStart').addEventListener('click', () => {
         if(cdIsRunning || !isMaster) return;
         if(cdRemainingMs <= 0) return; // 如果時間是0或小於0，不給跑
@@ -570,7 +607,6 @@
         broadcastState();
     });
 
-    // CLEAR 按鈕：完全歸零
     document.getElementById('cdReset').addEventListener('click', () => {
         if(!isMaster) return;
         cdIsRunning = false; 
@@ -590,8 +626,7 @@
         if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
             stretchWrapper.style.transform = 'none';
             
-            // 【核心修正】：使用 offsetWidth 獲取無縮放狀態下的「真實內容像素大小」
-            // 因為 CSS 改成了 width: max-content，所以不會再誤判為螢幕的寬度
+            // 使用 offsetWidth 獲取無縮放狀態下的「真實內容像素大小」
             const rectW = stretchWrapper.offsetWidth;
             const rectH = stretchWrapper.offsetHeight;
             
