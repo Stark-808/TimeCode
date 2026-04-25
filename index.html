@@ -20,7 +20,7 @@
         --accent-green: #00cc00;
         --accent-red: #ff3333;
         --accent-yellow: #ffcc00;
-        --border-rad: 4px; 
+        --border-rad: 6px; /* Slightly more rounded for that cute but pro look */
     }
 
     * { box-sizing: border-box; }
@@ -97,12 +97,14 @@
     
     .workspace { display: flex; flex: 1; overflow: hidden; width: 100%; }
     .panel { display: flex; flex-direction: column; background: var(--panel-bg); overflow: hidden; }
+    
+    /* Unified Header for the 3 panels (no bottom border) */
     .panel-header { 
-        padding: 15px; background: #000; 
+        padding: 15px 15px 5px 15px; background: var(--panel-bg); 
         font-weight: normal; font-size: 1.1rem; color: #ccc; flex-shrink: 0;
         display: flex; justify-content: space-between; align-items: center;
     }
-    .panel-content { flex: 1; overflow-y: auto; padding: 0 15px 15px 15px; display: flex; flex-direction: column; gap: 12px; }
+    .panel-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
     
     .resizer { width: 6px; background: #111; cursor: col-resize; flex-shrink: 0; transition: background 0.2s; border-left: 1px solid #000; border-right: 1px solid #000; }
     .resizer:hover, .resizer.dragging { background: var(--text-muted); }
@@ -142,23 +144,26 @@
     .prog-marker-time { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 2px 4px; border-radius: 2px; font-size: 0.7rem; font-weight: bold; margin-bottom: 2px; white-space: nowrap;}
 
     /* Quick Controls Symmetrical */
-    .quick-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
-    .qc-select { background: #000; border: 1px solid #444; color: #fff; padding: 4px; font-size: 0.8rem; width: 65px; text-align: center;}
-    .qc-btn { background: #111; border: 1px solid #444; color: #fff; padding: 6px 12px; font-size: 1rem; border-radius: var(--border-rad); cursor: pointer;}
+    .quick-controls { display: flex; justify-content: center; align-items: center; margin-top: 15px; gap: 6px; flex-wrap: wrap;}
+    .qc-select { background: #000; border: 1px solid #444; color: #fff; padding: 4px; font-size: 0.8rem; width: 60px; text-align: center;}
+    .qc-btn { background: #111; border: 1px solid #444; color: #fff; padding: 6px 12px; font-size: 1rem; border-radius: var(--border-rad); cursor: pointer; display: flex; align-items: center; justify-content: center;}
     .qc-btn:hover { background: #333; }
-    .qc-btn-play { color: var(--accent-green); width: 45px;}
-    .qc-btn-pause { color: var(--accent-red); width: 45px;}
+    .qc-btn-play { color: var(--accent-green); width: 40px;}
+    .qc-btn-pause { color: var(--accent-red); width: 40px;}
+    .qc-btn-adjust { width: 45px; font-size: 0.9rem; font-weight: bold;}
 
     .client-list { font-size: 0.85rem; color: #aaa; border-top: 1px solid #333; padding-top: 10px; margin-top: 10px; flex: 1; overflow-y: auto;}
 
     /* === Middle Panel (Timers) 3/6 === */
     #panel-mid { width: 50%; min-width: 350px; }
-    .timer-item { background: #000; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-radius: var(--border-rad); border: 1px solid transparent; transition: 0.2s; }
-    .timer-item.active-running { border: 1px solid #444; background: #111; }
+    .timer-item { background: #222222; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-radius: var(--border-rad); border: 1px solid #333; transition: 0.2s; margin-bottom: 5px;}
+    .timer-item.active-running { border: 1px solid #666; background: #2a2a2a; }
     
-    .t-name { font-size: 0.95rem; background: transparent; color: #fff; border: none; outline: none; width: 150px; }
-    .t-time-display { font-size: 0.9rem; color: #aaa; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: #1a1a1a; transition: 0.2s;}
-    .t-time-display:hover { background: #333; color: #fff;}
+    .t-name { font-size: 1rem; background: transparent; color: #fff; border: none; outline: none; width: 100%; padding: 4px; border-bottom: 1px solid transparent; transition: 0.2s;}
+    .t-name:focus { border-bottom: 1px solid #555; }
+    
+    .t-time-display { font-family: 'Digital-7 Mono', monospace; font-size: 1.8rem; color: var(--accent-green); cursor: pointer; padding: 0 10px; min-width: 80px; text-align: center; transition: 0.2s;}
+    .t-time-display:hover { color: #fff; }
     
     .t-actions { display: flex; gap: 8px; align-items: center;}
 
@@ -168,9 +173,9 @@
 
     /* === Right Panel (Messages) 2/6 === */
     #panel-right { width: 33.33%; min-width: 300px; }
-    .msg-item { background: #000; padding: 12px; display: flex; flex-direction: column; gap: 8px; border-radius: var(--border-rad); }
-    .msg-input { width: 100%; resize: vertical; min-height: 40px; font-size: 0.95rem; color: #fff; padding: 0; background: transparent; border: none; outline: none; border-bottom: 1px solid #333; border-radius: 0;}
-    .msg-input:focus { border-bottom: 1px solid #666; }
+    .msg-item { background: #222222; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-radius: var(--border-rad); border: 1px solid #333; margin-bottom: 5px;}
+    .msg-input { width: 100%; resize: vertical; min-height: 40px; font-size: 0.95rem; color: #fff; padding: 0; background: transparent; border: none; outline: none; border-bottom: 1px solid transparent;}
+    .msg-input:focus { border-bottom: 1px solid #555; }
     
     .msg-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px;}
     .msg-styles { display: flex; gap: 4px; align-items: center; }
@@ -184,7 +189,7 @@
     
     .msg-controls { display: flex; gap: 5px; align-items: center; }
     .msg-mode-select { background: #111; border: 1px solid #333; color: #fff; padding: 3px 6px; font-size: 0.75rem; border-radius: var(--border-rad); width: auto;}
-    .btn-show { border-color: #333; color: #aaa; padding: 3px 8px; font-size: 0.8rem; }
+    .btn-show { border-color: #444; color: #aaa; padding: 3px 12px; font-size: 0.8rem; font-weight: bold;}
     .btn-show.showing { border-color: var(--accent-red); color: var(--accent-red); }
 
     .add-block-btn { width: 100%; border: 1px dashed #444; color: #888; padding: 10px; background: transparent; font-size: 0.9rem; border-radius: var(--border-rad); transition: 0.2s; margin-top: 5px;}
@@ -350,11 +355,11 @@
                             <option value="1200000">20m</option>
                             <option value="1800000">30m</option>
                         </select>
-                        <div style="display:flex; gap:10px;">
-                            <button class="qc-btn" onclick="qcAdjust(-1)">-</button>
-                            <button class="qc-btn qc-btn-play" id="btn-qc-playpause" onclick="qcPlayPause()">▶</button>
-                            <button class="qc-btn" onclick="qcAdjust(1)">+</button>
-                        </div>
+                        <button class="qc-btn qc-btn-adjust" id="btn-qc-minus" onclick="qcAdjust(-1)">-</button>
+                        <button class="qc-btn" onclick="qcPrev()">|◀</button>
+                        <button class="qc-btn qc-btn-play" id="btn-qc-playpause" onclick="qcPlayPause()">▶</button>
+                        <button class="qc-btn" onclick="qcNext()">▶|</button>
+                        <button class="qc-btn qc-btn-adjust" id="btn-qc-plus" onclick="qcAdjust(1)">+</button>
                         <select class="qc-select" id="qc-step-r" onchange="syncQcStep('r')">
                             <option value="1000">1s</option>
                             <option value="10000">10s</option>
@@ -378,14 +383,16 @@
 
             <!-- Mid: Timers (3/6) -->
             <div class="panel" id="panel-mid">
-                <div class="panel-header">Timers</div>
-                <div class="panel-content" id="timers-content">
-                    <div id="timers-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-                    <div style="display:flex; gap:10px; margin-top:5px;">
-                        <button class="add-block-btn" onclick="addTimer()">+ Add Timer</button>
-                        <button class="add-block-btn" style="width:auto; padding:10px 20px; border-color:#555;" onclick="toggleBlackout()"><div class="led" id="led-blackout" style="display:inline-block; margin-right:5px;"></div>Blackout</button>
-                        <button class="add-block-btn" style="width:auto; padding:10px 20px; border-color:#555;" onclick="triggerFlash()">Flash</button>
+                <div class="panel-header">
+                    <span>Timers</span>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-square" style="border-color:#555; padding:2px 8px; font-size:0.8rem;" onclick="toggleBlackout()"><div class="led" id="led-blackout" style="margin-right:5px;"></div> Blackout</button>
+                        <button class="btn-square" style="border-color:#555; padding:2px 8px; font-size:0.8rem;" onclick="triggerFlash()">Flash</button>
                     </div>
+                </div>
+                <div class="panel-content" id="timers-content">
+                    <div id="timers-list" style="display:flex; flex-direction:column;"></div>
+                    <button class="add-block-btn" onclick="addTimer()">+ Add Timer</button>
                 </div>
             </div>
 
@@ -393,13 +400,15 @@
 
             <!-- Right: Messages (2/6) -->
             <div class="panel" id="panel-right">
-                <div class="panel-header">Messages</div>
-                <div class="panel-content" id="messages-content">
-                    <div id="messages-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-                    <div style="display:flex; gap:10px; margin-top:5px;">
-                        <button class="add-block-btn" onclick="addMessage()">+ Add Message</button>
-                        <button class="add-block-btn" style="width:auto; padding:10px 20px; border-color:#555;" onclick="triggerFlash()">Flash</button>
+                <div class="panel-header">
+                    <span>Messages</span>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-square" style="border-color:#555; padding:2px 8px; font-size:0.8rem;" onclick="triggerFlash()">Flash</button>
                     </div>
+                </div>
+                <div class="panel-content" id="messages-content">
+                    <div id="messages-list" style="display:flex; flex-direction:column;"></div>
+                    <button class="add-block-btn" onclick="addMessage()">+ Add Message</button>
                 </div>
             </div>
         </div>
@@ -442,7 +451,6 @@
     let cdTotalMs = 0;
     let clockOffset = 0; 
 
-    // Global Overrides
     let sysBlackout = false;
     let lastFlashTs = 0;
 
@@ -463,7 +471,7 @@
         
         if (isMaster) {
             document.getElementById('rooms-view').style.display = 'flex';
-            loadRooms(); renderRooms(); setupResizers();
+            loadRooms(); renderRooms(); setupResizers(); updateQcText();
         } else {
             document.getElementById('slave-view').style.display = 'flex';
         }
@@ -473,12 +481,11 @@
         mqttClient.on('message', handleMqttMessage);
     }
 
-    // === Rooms Management ===
     function loadRooms() {
-        let saved = localStorage.getItem('matc_rooms_v4');
+        let saved = localStorage.getItem('matc_rooms_v5');
         if (saved) { try { rooms = JSON.parse(saved); } catch(e) { rooms = []; } }
     }
-    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v4', JSON.stringify(rooms)); }
+    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v5', JSON.stringify(rooms)); }
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 4); }
 
     function openCreateRoomModal() {
@@ -547,7 +554,6 @@
         } 
     }
 
-    // === Enter Console ===
     function openRoom(id) {
         currentRoom = rooms.find(x=>x.id===id);
         if(!currentRoom) return;
@@ -560,7 +566,7 @@
         connectedClients = {}; renderClientList();
 
         mqttClient.unsubscribe(/.*/);
-        mqttClient.subscribe(`matc/v4/room_${activeRoomCode}/heartbeat`);
+        mqttClient.subscribe(`matc/v5/room_${activeRoomCode}/heartbeat`);
         
         cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; activeTimerIndex = -1; activeMessageId = null;
         sysBlackout = false; document.getElementById('led-blackout').className = 'led';
@@ -580,19 +586,14 @@
 
     function toggleBlackout() { sysBlackout = !sysBlackout; document.getElementById('led-blackout').className = 'led' + (sysBlackout?' active':''); broadcastState(); }
     
-    function triggerFlash() {
-        lastFlashTs = Date.now();
-        broadcastState();
-        playFlashAnimation();
-    }
+    function triggerFlash() { lastFlashTs = Date.now(); broadcastState(); playFlashAnimation(); }
 
     function playFlashAnimation() {
         document.body.classList.remove('flash-alert');
-        void document.body.offsetWidth; // force reflow
+        void document.body.offsetWidth; 
         document.body.classList.add('flash-alert');
     }
 
-    // === Timers ===
     function renderTimers() {
         let list = document.getElementById('timers-list');
         list.innerHTML = '';
@@ -601,18 +602,19 @@
             let div = document.createElement('div');
             div.className = 'timer-item' + (isActive ? ' active-running' : '');
             
-            // Format duration neatly: X Min X Sec
-            let durStr = (t.m > 0 ? t.m + ' Min ' : '') + (t.s > 0 ? t.s + ' Sec' : '');
-            if(durStr === '') durStr = '0 Sec';
+            // Format HH:MM:SS or MM:SS
+            let durStr = pad(t.m) + ":" + pad(t.s);
+            if (t.h > 0) durStr = t.h + ":" + durStr;
 
             div.innerHTML = `
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                    <span style="color:#777; font-weight:bold; font-size:1.1rem; width:25px;">#${i+1}</span>
+                    <div class="t-time-display" onclick="openTimerSettings('${t.id}')">${durStr}</div>
                     <input type="text" class="t-name" id="t-name-${t.id}" value="${t.name}" placeholder="Timer Name" onchange="updateTimerData('${t.id}')">
                 </div>
                 <div class="t-actions">
-                    <div class="t-time-display" onclick="openTimerSettings('${t.id}')">${durStr}</div>
-                    <button class="btn-square" style="border-color:#444;" onclick="setTimer(${i})">SET</button>
-                    <button class="btn-square" style="border-color:var(--accent-green); color:var(--accent-green);" onclick="goTimer(${i})">GO</button>
+                    <button class="btn-square btn-set" style="border-color:#555;" onclick="setTimer(${i})">SET</button>
+                    <button class="btn-square btn-go" style="border-color:var(--accent-green); color:var(--accent-green);" onclick="goTimer(${i})">GO</button>
                     <div class="dropdown">
                         <button class="btn-square" style="border:none; padding:4px 8px;" onclick="toggleDropdown('tmenu-${t.id}')">⋮</button>
                         <div class="dropdown-menu" id="tmenu-${t.id}" style="right:0; width:80px;">
@@ -626,10 +628,7 @@
         });
     }
 
-    function addTimer() {
-        currentRoom.timers.push({ id: generateId(), name: '', m: 15, s: 0, ym: 5, ys: 0, rm: 1, rs: 0, appr: 'cd', fps: 24, df: false });
-        saveRooms(); renderTimers();
-    }
+    function addTimer() { currentRoom.timers.push({ id: generateId(), name: '', h: 0, m: 15, s: 0, ym: 5, ys: 0, rm: 1, rs: 0, appr: 'cd', fps: 24, df: false }); saveRooms(); renderTimers(); }
     function updateTimerData(id) { let t = currentRoom.timers.find(x=>x.id===id); if(t) { t.name = document.getElementById('t-name-'+id).value; saveRooms(); } }
     function cloneTimer(id) { let t = currentRoom.timers.find(x=>x.id===id); if(t) { let nt = JSON.parse(JSON.stringify(t)); nt.id = generateId(); nt.name += ' (Copy)'; currentRoom.timers.push(nt); saveRooms(); renderTimers(); } }
     function delTimer(id) { if(confirm("Delete timer?")) { currentRoom.timers = currentRoom.timers.filter(x=>x.id!==id); saveRooms(); renderTimers(); } }
@@ -663,7 +662,7 @@
     function setTimer(idx) {
         activeTimerIndex = idx;
         let t = currentRoom.timers[idx];
-        cdRemainingMs = (t.m * 60 + t.s) * 1000;
+        cdRemainingMs = (t.h * 3600 + t.m * 60 + t.s) * 1000;
         cdTotalMs = cdRemainingMs; cdIsRunning = false;
         renderTimers(); updatePlayPauseBtn(); broadcastState();
     }
@@ -676,7 +675,6 @@
         }
     }
 
-    // === Messages ===
     function renderMessages() {
         let list = document.getElementById('messages-list');
         list.innerHTML = '';
@@ -732,10 +730,17 @@
     }
 
     // === Dashboard Quick Controls ===
+    function updateQcText() {
+        let text = document.getElementById('qc-step-l').options[document.getElementById('qc-step-l').selectedIndex].text;
+        document.getElementById('btn-qc-minus').textContent = "- " + text;
+        document.getElementById('btn-qc-plus').textContent = "+ " + text;
+    }
+    
     function syncQcStep(src) {
         let val = document.getElementById('qc-step-' + src).value;
         document.getElementById('qc-step-l').value = val;
         document.getElementById('qc-step-r').value = val;
+        updateQcText();
     }
 
     function updatePlayPauseBtn() {
@@ -762,6 +767,15 @@
         if(cdTotalMs < cdRemainingMs) cdTotalMs = cdRemainingMs;
         broadcastState();
     }
+    
+    function qcPrev() {
+        if(activeTimerIndex > 0) goTimer(activeTimerIndex - 1);
+        else if(currentRoom.timers.length > 0) goTimer(0);
+    }
+    function qcNext() {
+        if(activeTimerIndex < currentRoom.timers.length - 1) goTimer(activeTimerIndex + 1);
+        else if(currentRoom.timers.length > 0) goTimer(currentRoom.timers.length - 1);
+    }
 
     // === Network & Broadcast ===
     function broadcastState() {
@@ -786,7 +800,7 @@
             appr: appr, fps: fps, df: df,
             blk: sysBlackout, fTs: lastFlashTs
         });
-        mqttClient.publish(`matc/v4/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
+        mqttClient.publish(`matc/v5/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
     }
 
     function slaveConnect() {
@@ -796,9 +810,9 @@
         document.getElementById('slave-login').style.display = 'none';
         document.getElementById('slave-content').style.display = 'flex';
         
-        mqttClient.subscribe(`matc/v4/room_${activeRoomCode}/state`);
+        mqttClient.subscribe(`matc/v5/room_${activeRoomCode}/state`);
         if(heartbeatInt) clearInterval(heartbeatInt);
-        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v4/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
+        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v5/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
     }
 
     let lastState = null;
@@ -823,7 +837,7 @@
         let html = ''; let count = 0;
         for (const id in connectedClients) {
             if (now - connectedClients[id].lastSeen > 4000) delete connectedClients[id]; 
-            else { html += `<div class="client-item"><span class="status-dot led active"></span> ${connectedClients[id].name}</div>`; count++; }
+            else { html += `<div class="client-item"><span class="status-dot led active" style="display:inline-block;"></span> ${connectedClients[id].name}</div>`; count++; }
         }
         document.getElementById('m-client-list').innerHTML = html;
         document.getElementById('m-client-count').textContent = count;
@@ -938,7 +952,6 @@
     function applyStyleAndProgress(ms, tot, yMs, rMs, timeEl, bgEl, fillEl, markerEl, markerTimeEl, textStr) {
         timeEl.innerHTML = textStr;
         
-        // Progress Bar Calculation
         let pct = 0;
         if(tot > 0 && ms > 0) pct = (ms / tot) * 100;
         if(pct > 100) pct = 100;
@@ -946,13 +959,9 @@
         let yPct = 0, rPct = 0;
         if(tot > 0) { yPct = (yMs / tot) * 100; rPct = (rMs / tot) * 100; }
         
-        // Draw segmented background
         bgEl.style.background = `linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) ${rPct}%, var(--accent-yellow) ${rPct}%, var(--accent-yellow) ${yPct}%, var(--accent-green) ${yPct}%, var(--accent-green) 100%)`;
-        
-        // Deplete from left to right (black mask covers from pct to 100%)
         fillEl.style.width = (100 - pct) + '%';
         
-        // Float Marker
         if (markerEl && markerTimeEl) {
             if (tot === 0) { markerEl.style.display = 'none'; }
             else {
@@ -963,7 +972,6 @@
             }
         }
 
-        // Text Colors logic
         if (ms === 0 && tot === 0 && !cdIsRunning) {
             timeEl.style.color = 'var(--accent-green)';
             return;
