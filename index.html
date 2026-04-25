@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Network TimeCode (Memory Recovery Edition)</title>
+<title>Pro Stage Timer Console</title>
 
 <!-- 匯入 7段 LED 顯示器專用字體 -->
 <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
@@ -11,689 +11,1065 @@
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <style>
+    :root {
+        --bg-color: #000000;
+        --panel-bg: #0a0a0a;
+        --border-color: #333333;
+        --text-main: #ffffff;
+        --text-muted: #888888;
+        --accent-blue: #0088ff;
+        --accent-green: #00cc00;
+        --accent-red: #ff3333;
+        --accent-yellow: #ffcc00;
+        --hover-bg: #1a1a1a;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-        font-family: 'Consolas', 'Courier New', Courier, monospace;
-        background-color: #0a0a0a;
-        color: #00ff00; 
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        margin: 0;
-        user-select: none; 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        margin: 0; padding: 0;
         overflow: hidden; 
+        display: flex; flex-direction: column;
+        height: 100vh; width: 100vw;
     }
 
-    /* === 開機設備選擇畫面 === */
-    #welcomeScreen {
-        position: fixed; inset: 0; background-color: #001a33; z-index: 9999;
-        display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
-    }
-    #welcomeScreen h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ffcc00; letter-spacing: 2px; text-align: center;}
-    #welcomeScreen p { font-size: 1.2rem; color: #aaa; margin-bottom: 20px; text-align: center; padding: 0 20px;}
-    
-    .name-input-box { margin-bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    .name-input-box input {
-        font-size: 1.5rem; padding: 10px 20px; background-color: #000; color: #00ff00;
-        border: 2px solid #00aaff; border-radius: 8px; text-align: center; width: 250px; outline: none;
+    button, input, select {
+        font-family: inherit;
+        border-radius: 0 !important; /* 絕對方形 */
+        outline: none;
     }
 
-    .device-btns { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
-    .device-btns button {
-        padding: 15px 30px; font-size: 1.3rem; background: #002244; color: #cccccc;
-        border: 2px solid #555555; border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: bold;
-    }
-    .device-btns button:hover { background: #00aaff; color: #000; border-color: #00aaff; }
+    button { cursor: pointer; transition: 0.1s; }
+    button:active { transform: scale(0.98); }
 
-    /* === 頂部網路與角色面板 === */
-    .network-panel {
-        background: #002244; padding: 15px 25px; border: 1px solid #003366; border-top: 3px solid #ffcc00;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.8); display: flex; align-items: flex-start; gap: 30px;
-        z-index: 10; justify-content: center; margin-bottom: 20px; transition: all 0.3s;
-    }
-    
-    .panel-section { display: flex; flex-direction: column; gap: 10px; }
-    .panel-row { display: flex; align-items: center; gap: 10px; }
-
-    label, span.gray-text { font-size: 1.1rem; font-weight: bold; letter-spacing: 1px; color: #aaaaaa; }
-    .highlight { color: #ffcc00; font-size: 1.2rem;}
-    .device-name-display { color: #00aaff; font-size: 1.2rem; font-weight: bold; }
-    
-    select, input[type="text"], input[type="number"] {
-        font-size: 1.1rem; padding: 5px 10px; background-color: #001a33; color: #cccccc; 
-        border: 1px solid #555555; font-family: inherit; font-weight: bold; outline: none;
-    }
-    
-    /* === 螢幕顯示區 === */
-    .display-container {
-        position: relative; background-color: #000; padding: 40px 80px; border: 2px solid #333;
+    /* === 1. 歡迎與角色選擇畫面 === */
+    #role-screen {
+        position: fixed; inset: 0; background: var(--bg-color); z-index: 9999;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: all 0.3s; margin-bottom: 20px; width: 90%; max-width: 1600px;
     }
-
-    .stretch-wrapper {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transform-origin: center center; 
-        width: max-content; 
+    #role-screen h1 { font-size: 2.5rem; color: var(--text-main); letter-spacing: 2px; }
+    .btn-square {
+        background: transparent; color: var(--text-main); border: 1px solid var(--border-color);
+        padding: 10px 20px; font-size: 1.1rem; font-weight: bold; text-transform: uppercase;
     }
-
-    /* 字體巨量化 */
-    .time-text {
-        font-family: 'Digital-7 Mono', sans-serif; font-size: 20rem; letter-spacing: 2px;
-        white-space: nowrap; color: #00ff00; line-height: 0.9; transition: color 0.3s;
-    }
+    .btn-square:hover { border-color: var(--text-main); background: #111; }
     
-    /* 超時紅字發光狀態 */
-    .time-text.overtime {
-        color: #ff3333 !important;
-        text-shadow: 0 0 35px rgba(255, 51, 51, 1), 0 0 15px rgba(255, 51, 51, 0.8) !important;
+    .role-input {
+        background: #111; border: 1px solid var(--border-color); color: #fff;
+        padding: 10px; font-size: 1.2rem; text-align: center; width: 250px; margin-bottom: 20px;
     }
 
-    /* === 倒數計時進度條設計 === */
-    .progress-container {
-        position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; 
-        background-color: #111; display: none; justify-content: flex-end; 
-        box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); z-index: 10; border-top: 2px solid #333;
-    }
-    .progress-bar {
-        height: 100%; width: 100%; background-color: #00ff00;
-        box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
-        transition: width 0.1s linear, background-color 0.5s;
-    }
-    .progress-bar.warning { background-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
-    .progress-bar.danger { background-color: #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.6); }
+    /* === 2. 房間大廳 (Rooms View) === */
+    #rooms-view { display: none; flex-direction: column; height: 100vh; padding: 20px; overflow-y: auto; background: var(--bg-color); }
+    .rooms-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
+    .rooms-header h2 { margin: 0; font-size: 1.8rem; font-weight: normal; }
+    .btn-create { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .btn-create:hover { background: rgba(0, 136, 255, 0.1); }
 
-    /* === 全螢幕閃爍動畫 === */
-    @keyframes flashBg {
-        0%, 100% { background-color: #000; }
-        50% { background-color: #ff3333; }
+    .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+    .room-card {
+        background: var(--panel-bg); border: 1px solid var(--border-color); padding: 15px;
+        display: flex; flex-direction: column; gap: 10px; position: relative;
     }
-    @keyframes flashText {
-        0%, 100% { color: #ff3333; text-shadow: 0 0 25px rgba(255, 51, 51, 0.9); }
-        50% { color: #000000 !important; text-shadow: none !important; }
-    }
-    .flash-active { animation: flashBg 0.5s 2; }
-    .flash-active .time-text { animation: flashText 0.5s 2 !important; }
-
-    .user-bits { font-family: 'Digital-7 Mono', sans-serif; font-size: 4rem; color: #00cc00; letter-spacing: 5px; margin-top: 15px; }
-
-    .fullscreen-btn {
-        position: absolute; top: 10px; right: 10px; background: transparent; color: #555;
-        border: 1px solid #555; padding: 5px 10px; cursor: pointer; font-size: 1rem; font-family: inherit; font-weight: bold; z-index: 20;
-    }
-    .fullscreen-btn:hover { color: #00ff00; border-color: #00ff00; }
-
-    .display-container:fullscreen { width: 100vw; height: 100vh; padding: 0; border: none; background-color: #000; display: flex; align-items: center; justify-content: center; }
-    .fake-fullscreen {
-        position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 9999 !important;
-        background-color: #000 !important; border: none !important; margin: 0 !important; padding: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important;
-    }
-
-    /* === 控台按鈕區 === */
-    .controls-panel {
-        display: flex; gap: 15px; min-height: 60px; align-items: center; background: #002244;
-        padding: 15px 25px; border: 1px solid #003366; box-shadow: 0 5px 15px rgba(0,0,0,0.8); z-index: 10;
-    }
-    .control-group { display: none; gap: 15px; align-items: center; }
-    .control-group.active { display: flex; }
-
-    button.cmd-btn { padding: 8px 18px; font-size: 1.2rem; border: 2px solid #555; background-color: #001a33; color: #cccccc; font-family: inherit; font-weight: bold; text-transform: uppercase; cursor: pointer; }
-    button.cmd-btn:active { background-color: #cccccc; color: #001a33; }
-    button.play-btn { border-color: #00ff00; color: #00ff00; }
-    button.stop-btn { border-color: #ff3333; color: #ff3333; }
-    button.reset-btn { border-color: #ffcc00; color: #ffcc00; }
+    .room-card.pinned { border-color: var(--accent-yellow); }
+    .room-card h3 { margin: 0; font-size: 1.4rem; }
+    .room-stats { font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;}
+    .room-stats span { color: #ccc; }
+    .room-actions { display: flex; gap: 10px; margin-top: 10px; }
+    .btn-open { flex: 1; border-color: var(--accent-green); color: var(--accent-green); }
+    .btn-open:hover { background: rgba(0, 204, 0, 0.1); }
+    .btn-menu { width: 40px; border-color: var(--text-muted); color: var(--text-muted); position: relative; }
     
-    .client-list-box { width: 250px; height: 80px; background: #001a33; border: 1px solid #555; overflow-y: auto; padding: 5px; font-size: 0.9rem; color: #cccccc; }
-    .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #ff3333; margin-right: 5px; }
-    .status-dot.online { background-color: #00ff00; }
+    .menu-dropdown {
+        display: none; position: absolute; bottom: 40px; right: 0; background: #111; border: 1px solid var(--border-color);
+        flex-direction: column; z-index: 100;
+    }
+    .menu-dropdown.show { display: flex; }
+    .menu-dropdown button {
+        background: transparent; border: none; color: #ccc; padding: 10px 15px; text-align: left; font-size: 0.9rem;
+    }
+    .menu-dropdown button:hover { background: #222; color: #fff; }
 
-    #mainUI { display: none; flex-direction: column; align-items: center; width: 100%; }
+    /* 彈出視窗 (Modal) */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000;
+        align-items: center; justify-content: center;
+    }
+    .modal-box { background: #111; border: 1px solid var(--border-color); padding: 20px; width: 350px; display: flex; flex-direction: column; gap: 15px; }
+    .modal-box h3 { margin: 0 0 10px 0; }
+    .modal-box input { background: #000; border: 1px solid #333; color: #fff; padding: 8px; font-size: 1rem; }
+    .modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 
-    /* RWD 適應隱藏 (平板與手機共用最佳化版面) */
-    body.device-tablet .controls-panel, 
-    body.device-tablet .master-only, 
-    body.device-desktop .slave-only { display: none !important; }
-
-    body.device-tablet .network-panel { flex-direction: column; align-items: center; padding: 15px; gap: 15px; width: 90%; max-width: 400px; border-top: 3px solid #00aaff;}
-    body.device-tablet .panel-row label { display: none; }
-    body.device-tablet input#joinCodeInput { width: 120px; font-size: 1.5rem; text-align: center; }
-    body.device-tablet button#joinBtn { padding: 10px 20px; font-size: 1.2rem; }
-    body.device-tablet .display-container { border: none; padding: 0; width: 100vw; height: 50vh; margin-top: 20px; }
+    /* === 3. 中控台 (Dashboard View) 三欄拖曳 === */
+    #console-view { display: none; flex-direction: column; height: 100vh; }
+    .console-header {
+        height: 50px; background: #050505; border-bottom: 1px solid var(--border-color);
+        display: flex; align-items: center; padding: 0 20px; justify-content: space-between; flex-shrink: 0;
+    }
+    .console-header .room-info { font-size: 1.1rem; font-weight: bold; color: var(--accent-yellow); }
     
-    body.device-tablet .time-text { font-size: 30vw; } 
-    body.device-tablet .user-bits { font-size: 7vw; }
+    .workspace { display: flex; flex: 1; overflow: hidden; width: 100%; }
+    .panel { display: flex; flex-direction: column; background: var(--panel-bg); overflow: hidden; }
+    .panel-header { padding: 10px 15px; background: #000; border-bottom: 1px solid var(--border-color); font-weight: bold; text-transform: uppercase; color: #aaa; flex-shrink: 0; }
+    .panel-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+    
+    /* 拖曳軸 */
+    .resizer { width: 6px; background: #222; cursor: col-resize; flex-shrink: 0; transition: background 0.2s; }
+    .resizer:hover, .resizer.dragging { background: var(--text-muted); }
 
+    /* === 左欄：Dashboard === */
+    #panel-left { width: 16.66%; min-width: 250px; }
+    .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--border-color); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .preview-scale-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; transform-origin: center; width: max-content;}
+    .preview-time { font-family: 'Digital-7 Mono', monospace; font-size: 5rem; color: var(--accent-green); line-height: 0.9; text-shadow: 0 0 10px rgba(0,255,0,0.5);}
+    .preview-time.overtime { color: var(--accent-red); text-shadow: 0 0 15px rgba(255,51,51,0.8); }
+    .preview-msg { font-size: 1rem; color: #fff; font-weight: bold; text-align: center; margin-top: 5px; }
+    .preview-msg.msg-fullscreen { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-size: 2rem; z-index: 5; }
+    
+    .fs-preview-btn { position: absolute; top: 5px; right: 5px; background: transparent; border: 1px solid #555; color: #888; font-size: 0.7rem; padding: 2px 5px; cursor: pointer; z-index: 10; }
+    .fs-preview-btn:hover { border-color: #fff; color: #fff; }
+
+    /* 進度條與 Hover Tooltip */
+    .prog-container { width: 100%; height: 12px; background: #111; border: 1px solid #333; position: relative; cursor: crosshair; margin-top: 5px;}
+    .prog-bar { height: 100%; width: 0%; background: var(--accent-green); transition: width 0.1s linear, background 0.3s; }
+    .prog-bar.warning { background: var(--accent-yellow); }
+    .prog-bar.danger { background: var(--accent-red); }
+    #prog-tooltip { 
+        position: absolute; top: -25px; left: 0; background: #fff; color: #000; font-size: 0.75rem; 
+        padding: 2px 6px; pointer-events: none; display: none; transform: translateX(-50%); font-weight: bold; z-index: 20;
+    }
+
+    .quick-controls { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; justify-content: center;}
+    .quick-controls select { background: #000; border: 1px solid #444; color: #fff; padding: 5px; font-size: 0.85rem; }
+    .quick-controls button { background: #111; border: 1px solid #444; color: #fff; padding: 5px 10px; font-size: 0.9rem; font-weight: bold; }
+    .quick-controls button:hover { background: #333; }
+    .quick-controls .btn-play { color: var(--accent-green); border-color: var(--accent-green); }
+    .quick-controls .btn-pause { color: var(--accent-yellow); border-color: var(--accent-yellow); }
+
+    .client-list { font-size: 0.85rem; color: #aaa; border-top: 1px solid #333; padding-top: 10px; flex: 1; overflow-y: auto;}
+    .client-item { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+    .status-dot { width: 8px; height: 8px; background: var(--accent-green); display: inline-block; }
+
+    /* === 中間欄：Timers === */
+    #panel-mid { width: 50%; min-width: 350px; }
+    .timer-item { border: 1px solid var(--border-color); background: #000; padding: 10px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.2s; }
+    .timer-item.active-running { border-color: var(--accent-red); box-shadow: inset 0 0 10px rgba(255,51,51,0.2); }
+    .timer-main-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .timer-time-inputs { display: flex; align-items: center; gap: 5px; font-size: 1.2rem; font-weight: bold; }
+    .timer-time-inputs input { width: 50px; text-align: center; background: #111; border: 1px solid #444; color: #fff; font-size: 1.2rem; padding: 5px; }
+    
+    .timer-actions { display: flex; gap: 5px; margin-left: auto; }
+    .btn-set { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .btn-go { border-color: var(--accent-green); color: var(--accent-green); }
+    .btn-settings { border-color: var(--text-muted); color: var(--text-muted); }
+
+    .timer-settings-panel { display: none; background: #111; padding: 10px; border: 1px dashed #444; margin-top: 5px; flex-direction: column; gap: 10px; font-size: 0.9rem;}
+    .timer-settings-panel.show { display: flex; }
+    .ts-row { display: flex; align-items: center; gap: 10px; }
+    .ts-row input { width: 45px; text-align: center; background: #000; border: 1px solid #333; color: #fff; padding: 3px; }
+    .ts-row span.y { color: var(--accent-yellow); font-weight: bold; }
+    .ts-row span.r { color: var(--accent-red); font-weight: bold; }
+    .btn-save-settings { align-self: flex-end; background: #222; color: #fff; border: 1px solid #555; padding: 4px 12px; }
+
+    /* === 右欄：Messages === */
+    #panel-right { width: 33.33%; min-width: 300px; }
+    .msg-item { border: 1px solid var(--border-color); background: #000; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .msg-input { width: 100%; background: #111; border: 1px solid #444; color: #fff; padding: 8px; font-size: 1rem; resize: vertical; min-height: 60px; font-family: inherit;}
+    .msg-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
+    .msg-styles { display: flex; gap: 5px; }
+    .style-btn { width: 30px; height: 30px; background: #111; border: 1px solid #444; color: #aaa; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;}
+    .style-btn.on { background: #333; color: #fff; border-color: #888; }
+    .color-btn { width: 25px; height: 25px; border: 2px solid transparent; cursor: pointer; }
+    .color-btn[data-c="white"] { background: #ffffff; }
+    .color-btn[data-c="green"] { background: var(--accent-green); }
+    .color-btn[data-c="red"] { background: var(--accent-red); }
+    .color-btn.selected { border-color: var(--accent-blue); transform: scale(1.1); }
+    
+    .msg-bottom-row { display: flex; justify-content: space-between; align-items: center; }
+    .msg-mode-select { background: #111; border: 1px solid #444; color: #fff; padding: 5px; font-size: 0.85rem; }
+    .btn-show { border-color: #555; color: #aaa; display: flex; align-items: center; gap: 8px; padding: 6px 15px; font-weight: bold;}
+    .btn-show .led { width: 10px; height: 10px; background: #333; border: 1px solid #111; }
+    .btn-show.showing { border-color: var(--accent-green); color: var(--accent-green); }
+    .btn-show.showing .led { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); border-color: #fff;}
+
+    /* === 4. 接收端 (Slave Display) 專用全螢幕 === */
+    #slave-view { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: relative; overflow: hidden; }
+    .slave-code-input { position: absolute; z-index: 100; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .slave-code-input input { font-size: 2rem; padding: 10px; text-align: center; width: 200px; background: #111; color: var(--accent-green); border: 2px solid #333; }
+    
+    #slave-content { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+    .slave-stretch { display: flex; flex-direction: column; align-items: center; justify-content: center; transform-origin: center; width: max-content; }
+    .slave-time { font-family: 'Digital-7 Mono', monospace; font-size: 25rem; color: var(--accent-green); line-height: 0.9; white-space: nowrap; transition: color 0.3s;}
+    .slave-time.overtime { color: var(--accent-red); text-shadow: 0 0 35px rgba(255,51,51,1), 0 0 15px rgba(255,51,51,0.8); }
+    
+    .slave-msg-bottom { font-size: 5rem; color: #fff; font-weight: bold; text-align: center; margin-top: 20px; white-space: pre-wrap; line-height: 1.2; display: none;}
+    .slave-msg-fs { position: absolute; inset: 0; background: #000; display: none; align-items: center; justify-content: center; font-size: 10rem; color: #fff; font-weight: bold; text-align: center; z-index: 50; white-space: pre-wrap; line-height: 1.2; padding: 50px;}
+    
+    .slave-prog-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; background: #111; border-top: 2px solid #333; z-index: 60;}
+    .slave-prog-bar { height: 100%; width: 0%; background: var(--accent-green); transition: width 0.1s linear, background 0.5s; }
+    .slave-prog-bar.warning { background: var(--accent-yellow); box-shadow: 0 0 15px rgba(255,204,0,0.6); }
+    .slave-prog-bar.danger { background: var(--accent-red); box-shadow: 0 0 15px rgba(255,51,51,0.6); }
+
+    .slave-flash { animation: flashBg 0.5s 2; }
+    @keyframes flashBg { 0%, 100% { background-color: #000; } 50% { background-color: #ff3333; } }
+
+    /* RWD 平板/手機不允許左右拖曳，改為上下排列 */
+    @media (max-width: 1024px) {
+        .workspace { flex-direction: column; overflow-y: auto; }
+        .resizer { display: none; }
+        #panel-left, #panel-mid, #panel-right { width: 100% !important; min-height: 400px; flex: none; border-bottom: 5px solid #222; }
+    }
 </style>
 </head>
 <body>
 
-    <div id="welcomeScreen">
-        <h1>NTP TIMECODE SYNC</h1>
-        <p>請輸入此裝置名稱，並選擇裝置類型</p>
-        <div class="name-input-box">
-            <input type="text" id="welcomeName" placeholder="例如：導播電腦 / 攝影師手機">
-        </div>
-        <div class="device-btns">
-            <button onclick="initSystem('desktop')">💻 電腦 (主控發送端)</button>
-            <button onclick="initSystem('tablet')">📱 平板／手機 (純顯示接收)</button>
+    <!-- 角色選擇 -->
+    <div id="role-screen">
+        <h1>PRO STAGE TIMER</h1>
+        <input type="text" id="my-name-input" class="role-input" placeholder="Your Device Name">
+        <div style="display: flex; gap: 20px;">
+            <button class="btn-square" onclick="initApp('master')">Console (Master)</button>
+            <button class="btn-square" onclick="initApp('slave')">Display (Slave)</button>
         </div>
     </div>
 
-    <div id="mainUI">
-        <div class="network-panel">
-            <div class="panel-section">
-                <div class="panel-row">
-                    <span class="status-dot" id="netStatus"></span>
-                    <span class="gray-text" id="myRoleText">NETWORK</span>
-                </div>
-                <div class="panel-row">
-                    <label>NAME:</label>
-                    <span class="device-name-display" id="displayMyName">Unknown</span>
-                </div>
-                <div class="panel-row slave-only">
-                    <input type="text" id="joinCodeInput" placeholder="輸入5碼房間代碼" maxlength="5">
-                    <button class="cmd-btn" id="joinBtn" style="border-color:#00aaff; color:#00aaff;">CONNECT</button>
-                </div>
-            </div>
+    <!-- 主控：房間大廳 -->
+    <div id="rooms-view">
+        <div class="rooms-header">
+            <h2>Rooms (<span id="rooms-count">0</span>)</h2>
+            <button class="btn-square btn-create" onclick="openCreateRoomModal()">+ Create Room</button>
+        </div>
+        <div class="rooms-grid" id="rooms-grid">
+            <!-- Room Cards 產生區 -->
+        </div>
+    </div>
 
-            <div class="panel-section master-only">
-                <div class="panel-row">
-                    <label>ROOM CODE:</label>
-                    <input type="text" id="masterRoomInput" maxlength="5" style="width: 80px; font-size: 1.2rem; text-align: center; color: #ffcc00; font-weight: bold; background: #001a33; border: 1px solid #ffcc00; outline: none;">
-                    <button class="cmd-btn" id="masterRejoinBtn" style="border-color:#00aaff; color:#00aaff; font-size: 0.9rem; padding: 5px 10px;">REJOIN</button>
-                    <button class="cmd-btn" id="masterNewRoomBtn" style="border-color:#ffcc00; color:#ffcc00; font-size: 0.9rem; padding: 5px 10px;">NEW</button>
-                </div>
-                <div class="panel-row">
-                    <label>MODE:</label>
-                    <select id="mainMode">
-                        <option value="clock" selected>SYSTEM CLOCK</option>
-                        <option value="countdown">COUNTDOWN TIMER</option>
-                        <option value="timecode">SMPTE TIMECODE</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="panel-section master-only">
-                <label>CONNECTED DEVICES: <span id="clientCount" style="color:#ccc;">0</span></label>
-                <div class="client-list-box" id="clientListBox"></div>
+    <!-- 主控：建立房間 Modal -->
+    <div class="modal-overlay" id="create-room-modal">
+        <div class="modal-box">
+            <h3>Create New Room</h3>
+            <input type="text" id="new-room-name" placeholder="Room Name (e.g., Main Hall)">
+            <input type="text" id="new-room-code" placeholder="5-Digit Code" maxlength="5">
+            <div class="modal-btns">
+                <button class="btn-square" style="border-color:#555; color:#aaa;" onclick="closeModal('create-room-modal')">Cancel</button>
+                <button class="btn-square btn-create" onclick="confirmCreateRoom()">Create</button>
             </div>
         </div>
+    </div>
 
-        <div class="display-container" id="displayContainer">
-            <button class="fullscreen-btn" id="fsBtn">[ FULLSCREEN ]</button>
-            <div class="stretch-wrapper" id="stretchWrapper">
-                <div class="time-text" id="timeDisplay">--:--:--</div>
-                <div class="user-bits" id="userBitsDisplay" style="display: none;">UB: 00 00 00 00</div>
+    <!-- 主控：工作區 (Dashboard/Timers/Messages) -->
+    <div id="console-view">
+        <div class="console-header">
+            <button class="btn-square" style="padding: 5px 15px; border-color:#555; color:#ccc;" onclick="exitRoom()">← Back to Rooms</button>
+            <div class="room-info" id="console-room-info">ROOM: UNKNOWN </div>
+            <button class="btn-square fs-preview-btn" style="position:static; padding: 5px 15px;" id="global-fs-btn">[ FULLSCREEN PREVIEW ]</button>
+        </div>
+        
+        <div class="workspace" id="workspace">
+            <!-- 左：Dashboard -->
+            <div class="panel" id="panel-left">
+                <div class="panel-header">Dashboard</div>
+                <div class="panel-content" style="padding: 10px;">
+                    <div class="preview-box" id="master-preview-box">
+                        <div class="preview-scale-wrapper" id="master-preview-scale">
+                            <div class="preview-time" id="m-prev-time">00:00</div>
+                            <div class="preview-msg" id="m-prev-msg-bot" style="display:none;"></div>
+                        </div>
+                        <div class="preview-msg msg-fullscreen" id="m-prev-msg-fs" style="display:none;"></div>
+                    </div>
+                    <div class="prog-container" id="m-prog-container">
+                        <div class="prog-bar" id="m-prog-bar"></div>
+                        <div id="prog-tooltip">00:00</div>
+                    </div>
+                    <div class="quick-controls">
+                        <select id="qc-step">
+                            <option value="1000">1 Sec</option>
+                            <option value="10000">10 Sec</option>
+                            <option value="30000">30 Sec</option>
+                            <option value="60000" selected>1 Min</option>
+                            <option value="300000">5 Min</option>
+                            <option value="600000">10 Min</option>
+                            <option value="1200000">20 Min</option>
+                            <option value="1800000">30 Min</option>
+                        </select>
+                        <button onclick="qcAdjust(-1)">-</button>
+                        <button onclick="qcPrev()">|◀</button>
+                        <button class="btn-play" id="btn-master-play" onclick="qcPlayPause()">▶ / ‖</button>
+                        <button onclick="qcNext()">▶|</button>
+                        <button onclick="qcAdjust(1)">+</button>
+                    </div>
+                    <div class="client-list">
+                        <div style="color:#fff; margin-bottom:5px; font-weight:bold;">Connected Displays: <span id="m-client-count">0</span></div>
+                        <div id="m-client-list"></div>
+                    </div>
+                </div>
             </div>
-            <!-- 進度條 -->
-            <div class="progress-container" id="progressContainer">
-                <div class="progress-bar" id="progressBar"></div>
+            
+            <div class="resizer" id="resizer-lm"></div>
+
+            <!-- 中：Timers -->
+            <div class="panel" id="panel-mid">
+                <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Timers</span>
+                    <button class="btn-square" style="padding:2px 10px; font-size:0.8rem; border-color:#fff;" onclick="addTimer()">+ Add Timer</button>
+                </div>
+                <div class="panel-content" id="timers-list">
+                    <!-- 動態生成 Timers -->
+                </div>
+            </div>
+
+            <div class="resizer" id="resizer-mr"></div>
+
+            <!-- 右：Messages -->
+            <div class="panel" id="panel-right">
+                <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Messages</span>
+                    <button class="btn-square" style="padding:2px 10px; font-size:0.8rem; border-color:#fff;" onclick="addMessage()">+ Add Msg</button>
+                </div>
+                <div class="panel-content" id="messages-list">
+                    <!-- 動態生成 Messages -->
+                </div>
             </div>
         </div>
+    </div>
 
-        <div class="controls-panel">
-            <div class="control-group active" id="ctrl-clock">
-                <label>>>> SYNC WITH SYSTEM NTP CLOCK <<<</label>
+    <!-- 接收端 (Slave) 畫面 -->
+    <div id="slave-view">
+        <div class="slave-code-input" id="slave-login">
+            <h2 style="color:#fff;">Enter Room Code</h2>
+            <input type="text" id="slave-room-code" maxlength="5" placeholder="12345">
+            <button class="btn-square btn-open" onclick="slaveConnect()">CONNECT</button>
+        </div>
+        <div id="slave-content">
+            <div class="slave-stretch" id="slave-stretch">
+                <div class="slave-time" id="s-time">00:00</div>
+                <div class="slave-msg-bottom" id="s-msg-bot"></div>
             </div>
-
-            <div class="control-group" id="ctrl-countdown">
-                <input type="number" id="cdMin" min="0" value="0" style="width:50px;"><label>MIN</label>
-                <input type="number" id="cdSec" min="0" max="59" value="0" style="width:50px;"><label>SEC</label>
-                <button id="cdSet" class="cmd-btn" style="border-color:#00aaff; color:#00aaff;">SET</button>
-                <button id="cdStart" class="cmd-btn play-btn">GO</button>
-                <button id="cdStop" class="cmd-btn stop-btn">HALT</button>
-                <button id="cdReset" class="cmd-btn reset-btn">CLEAR</button>
-            </div>
-
-            <div class="control-group" id="ctrl-timecode">
-                <label>FPS:</label>
-                <select id="fpsSelect">
-                    <option value="24">24</option>
-                    <option value="25">25</option>
-                    <option value="30">30 (NDF)</option>
-                    <option value="29.97">29.97 (DF)</option>
-                </select>
-                <button id="tcStart" class="cmd-btn play-btn">PLAY</button>
-                <button id="tcStop" class="cmd-btn stop-btn">STOP</button>
-                <button id="tcReset" class="cmd-btn reset-btn">RESET</button>
-                <label style="margin-left: 20px;">USER BITS:</label>
-                <input type="text" id="ubInput" value="20260423" maxlength="8">
+            <div class="slave-msg-fs" id="s-msg-fs"></div>
+            <div class="slave-prog-container">
+                <div class="slave-prog-bar" id="s-prog-bar"></div>
             </div>
         </div>
     </div>
 
 <script>
+    // ==========================================
+    // 基礎設定與變數
+    // ==========================================
     let isMaster = true;
-    let myDeviceType = 'desktop';
-    let myDeviceName = 'Unknown';
-    const myDeviceId = 'dev_' + Math.random().toString(36).substr(2, 6);
+    let myName = 'Unknown';
+    const myId = 'dev_' + Math.random().toString(36).substr(2, 6);
+    
+    // MQTT 通訊
+    const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; 
+    let mqttClient = null;
+    let activeRoomCode = '';
+    let heartbeatInt = null;
+    let connectedClients = {};
 
-    function initSystem(deviceType) {
-        let nameInput = document.getElementById('welcomeName').value.trim();
-        myDeviceType = deviceType;
-        isMaster = (deviceType === 'desktop');
-        
-        if (nameInput !== "") myDeviceName = nameInput;
-        else myDeviceName = (isMaster ? "MASTER-" : "SLAVE-") + myDeviceId.substring(4).toUpperCase();
-
-        document.getElementById('welcomeScreen').style.display = 'none';
-        document.getElementById('mainUI').style.display = 'flex';
-        document.body.className = `device-${deviceType}`;
-        
-        document.getElementById('myRoleText').textContent = isMaster ? "MASTER (主控端)" : "SLAVE (接收端)";
-        document.getElementById('displayMyName').textContent = myDeviceName;
-
-        connectNetwork();
-    }
-
-    function pad(num) { return num.toString().padStart(2, '0'); }
-
-    let currentMode = 'clock'; 
-    let tcIsRunning = false; let tcBaseTime = 0; let tcAccumulatedMs = 0;
-    let fps = 24; let isDropFrame = false;
-
+    // 倒數計時核心狀態
     let cdIsRunning = false;
     let cdTargetTime = 0;
     let cdRemainingMs = 0;
-    let cdTotalMs = 0; 
-
+    let cdTotalMs = 0;
     let clockOffset = 0; 
-    let hasFlashed = false; 
+    let hasFlashed = false;
 
-    function getSyncedTime() { return Date.now() + clockOffset; }
+    // 房間與資料模型
+    let rooms = [];
+    let currentRoom = null;
+    let activeTimerIndex = -1; // 目前正在跑哪個 Timer
+    let activeMessageId = null; // 記錄目前廣播出去的 Message ID
 
-    const displayContainer = document.getElementById('displayContainer');
-    const timeDisplay = document.getElementById('timeDisplay');
-    const userBitsDisplay = document.getElementById('userBitsDisplay');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const ubInput = document.getElementById('ubInput');
-    
-    function msToTimeCode(ms, frameRate, isDF) {
-        let totalFrames = isDF ? Math.floor(ms / (1000 / 29.97)) : Math.floor(ms / (1000 / frameRate));
-        let h, m, s, f; let fpsInt = (frameRate === 29.97) ? 30 : Math.round(frameRate);
-
-        if (isDF) {
-            let dropFrames = 2; let framesPer10Min = 17982; let framesPerMin = 1798;
-            let d = Math.floor(totalFrames / framesPer10Min); let rem = totalFrames % framesPer10Min;
-            let count = 0; if (rem > dropFrames) count = Math.floor((rem - dropFrames) / framesPerMin);
-            let mappedFrames = totalFrames + (9 * dropFrames * d) + (dropFrames * count);
-            f = mappedFrames % fpsInt; s = Math.floor(mappedFrames / fpsInt) % 60;
-            m = Math.floor(mappedFrames / (fpsInt * 60)) % 60; h = Math.floor(mappedFrames / (fpsInt * 3600)) % 24;
+    // ==========================================
+    // 初始化與角色切換
+    // ==========================================
+    function initApp(role) {
+        let n = document.getElementById('my-name-input').value.trim();
+        myName = n !== '' ? n : (role === 'master' ? 'Console-' : 'Disp-') + myId.substr(4).toUpperCase();
+        isMaster = (role === 'master');
+        
+        document.getElementById('role-screen').style.display = 'none';
+        
+        if (isMaster) {
+            document.getElementById('rooms-view').style.display = 'flex';
+            loadRooms();
+            renderRooms();
+            setupResizers();
+            setupProgressHover();
         } else {
-            f = totalFrames % fpsInt; s = Math.floor(totalFrames / fpsInt) % 60;
-            m = Math.floor(totalFrames / (fpsInt * 60)) % 60; h = Math.floor(totalFrames / (fpsInt * 3600)) % 24;
+            document.getElementById('slave-view').style.display = 'flex';
         }
-        return `${pad(h)}:${pad(m)}:${pad(s)}${isDF ? ';' : ':'}${pad(f)}`;
+        
+        if(mqttClient) mqttClient.end();
+        mqttClient = mqtt.connect(MQTT_BROKER);
+        mqttClient.on('message', handleMqttMessage);
     }
 
-    setInterval(() => {
-        let now = getSyncedTime(); 
-
-        if (currentMode === 'timecode') {
-            progressContainer.style.display = 'none';
-            timeDisplay.classList.remove('overtime');
-            
-            let elapsedMs = tcAccumulatedMs;
-            if (tcIsRunning) elapsedMs += (now - tcBaseTime);
-            timeDisplay.textContent = msToTimeCode(elapsedMs, fps, isDropFrame);
-            
-            if (isMaster) {
-                let val = ubInput.value.padEnd(8, '0').toUpperCase(); 
-                userBitsDisplay.textContent = `UB: ${val.match(/.{1,2}/g).join(' ')}`;
-            }
-            userBitsDisplay.style.display = 'block';
-
-        } else if (currentMode === 'countdown') {
-            userBitsDisplay.style.display = 'none';
-            progressContainer.style.display = 'flex'; 
-
-            let ms = cdRemainingMs;
-            if (cdIsRunning) ms = cdTargetTime - now; 
-            
-            if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) {
-                timeDisplay.textContent = "00:00";
-                timeDisplay.classList.remove('overtime');
-                progressBar.style.width = '0%';
-                progressBar.className = 'progress-bar';
-                return;
-            }
-
-            let isOvertime = ms <= 0;
-            let absMs = Math.abs(ms);
-            
-            if (ms > 0) hasFlashed = false;
-            
-            let totalSec = isOvertime ? Math.floor(absMs / 1000) : Math.ceil(absMs / 1000);
-            timeDisplay.textContent = (isOvertime ? "+" : "") + `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
-            
-            if (isOvertime && cdIsRunning && !hasFlashed) {
-                hasFlashed = true;
-                displayContainer.classList.add('flash-active');
-                setTimeout(() => {
-                    displayContainer.classList.remove('flash-active');
-                }, 1000); 
-            }
-
-            if (isOvertime) {
-                timeDisplay.classList.add('overtime');
-                progressBar.style.width = '0%';
-                progressBar.className = 'progress-bar danger';
-            } else {
-                timeDisplay.classList.remove('overtime');
-                
-                if (cdTotalMs > 0) {
-                    let percent = (ms / cdTotalMs) * 100;
-                    progressBar.style.width = percent + '%';
-                    
-                    if (percent <= 5) {
-                        progressBar.className = 'progress-bar danger';
-                    } else if (percent <= 20) {
-                        progressBar.className = 'progress-bar warning';
-                    } else {
-                        progressBar.className = 'progress-bar';
-                    }
-                }
-            }
-
-        } else if (currentMode === 'clock') {
-            progressContainer.style.display = 'none';
-            userBitsDisplay.style.display = 'none';
-            timeDisplay.classList.remove('overtime');
-            
-            let sysNow = new Date(now); 
-            let h = sysNow.getHours(); let m = sysNow.getMinutes();
-            let s = sysNow.getSeconds(); let ms = Math.floor(sysNow.getMilliseconds() / 10);
-            timeDisplay.textContent = `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms)}`;
+    // ==========================================
+    // 房間管理系統 (LocalStorage)
+    // ==========================================
+    function loadRooms() {
+        let saved = localStorage.getItem('matc_rooms_v2');
+        if (saved) {
+            try { rooms = JSON.parse(saved); } catch(e) { rooms = []; }
         }
-    }, 30);
+    }
+    
+    function saveRooms() {
+        if(isMaster) localStorage.setItem('matc_rooms_v2', JSON.stringify(rooms));
+    }
 
-    const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; 
-    let mqttClient = null;
-    let currentRoomCode = '';
-    let connectedClients = {}; 
-    let heartbeatInterval = null;
+    function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 4); }
 
-    // === 主控端房間切換與連線邏輯 (包含記憶恢復功能) ===
-    function changeMasterRoom(newCode) {
-        if (!isMaster || !mqttClient) return;
+    function openCreateRoomModal() {
+        document.getElementById('new-room-name').value = '';
+        document.getElementById('new-room-code').value = Math.floor(10000 + Math.random() * 90000).toString();
+        document.getElementById('create-room-modal').style.display = 'flex';
+    }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    
+    function confirmCreateRoom() {
+        let name = document.getElementById('new-room-name').value.trim() || 'New Room';
+        let code = document.getElementById('new-room-code').value.trim();
+        if(code.length !== 5) { alert('Code must be 5 digits.'); return; }
         
-        if (currentRoomCode && currentRoomCode !== newCode) {
-            mqttClient.unsubscribe(`matc/room_${currentRoomCode}/heartbeat`);
-        }
-        currentRoomCode = newCode;
-        document.getElementById('masterRoomInput').value = currentRoomCode;
+        let newRoom = { id: generateId(), name: name, code: code, isPinned: false, timers: [], messages: [] };
+        // 給預設一個計時器跟訊息
+        newRoom.timers.push({ id: generateId(), m: 15, s: 0, ym: 5, ys: 0, rm: 1, rs: 0 });
+        newRoom.messages.push({ id: generateId(), text: 'Time is up! Please wrap up.', c: 'red', b: true, cap: true, mode: 'bottom', show: false });
         
-        // 儲存至 SessionStorage，防止 F5 網頁重整後房間遺失
-        sessionStorage.setItem('matc_last_room', currentRoomCode);
-        
-        mqttClient.subscribe(`matc/room_${currentRoomCode}/heartbeat`);
-        
-        // === 讀取 LocalStorage 狀態快取 (恢復斷線前的倒數與設定) ===
-        let savedState = localStorage.getItem('matc_state_' + currentRoomCode);
-        if (savedState) {
-            try {
-                let data = JSON.parse(savedState);
-                currentMode = data.mode || 'clock';
-                fps = data.fps || 24;
-                tcIsRunning = data.tcIsRunning || false;
-                tcBaseTime = data.tcBaseTime || 0;
-                tcAccumulatedMs = data.tcAccumulatedMs || 0;
-                cdIsRunning = data.cdIsRunning || false;
-                cdTargetTime = data.cdTargetTime || 0;
-                cdRemainingMs = data.cdRemainingMs || 0;
-                cdTotalMs = data.cdTotalMs || 0;
-                
-                document.getElementById('mainMode').value = currentMode;
-                document.getElementById('fpsSelect').value = fps;
-                if(data.ub) {
-                    document.getElementById('ubInput').value = data.ub.replace('UB: ', '').replace(/ /g, '');
-                }
-                
-                document.querySelectorAll('.control-group').forEach(el => el.classList.remove('active'));
-                document.getElementById('ctrl-' + currentMode).classList.add('active');
-                applyStretch();
-            } catch(e) { console.error("狀態恢復失敗", e); }
-        } else {
-            // 全新房間，初始化數值
-            tcIsRunning = false; tcAccumulatedMs = 0; tcBaseTime = Date.now();
-            cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; cdTargetTime = 0;
-        }
+        rooms.push(newRoom);
+        saveRooms();
+        renderRooms();
+        closeModal('create-room-modal');
+    }
 
-        connectedClients = {}; 
+    function renderRooms() {
+        let grid = document.getElementById('rooms-grid');
+        grid.innerHTML = '';
+        
+        // 排序：Pinned 在前
+        rooms.sort((a, b) => (b.isPinned === a.isPinned) ? 0 : b.isPinned ? 1 : -1);
+        document.getElementById('rooms-count').textContent = rooms.length;
+
+        rooms.forEach(r => {
+            let card = document.createElement('div');
+            card.className = 'room-card' + (r.isPinned ? ' pinned' : '');
+            card.innerHTML = `
+                <h3>${r.name}</h3>
+                <div class="room-stats">
+                    <span>Code: <b style="color:var(--accent-yellow); font-size:1.1rem;">${r.code}</b></span>
+                    <span>Timers: ${r.timers.length} | Msgs: ${r.messages.length}</span>
+                </div>
+                <div class="room-actions">
+                    <button class="btn-square btn-open" onclick="openRoom('${r.id}')">OPEN</button>
+                    <button class="btn-square btn-menu" onclick="toggleRoomMenu('${r.id}')">...</button>
+                </div>
+                <div class="menu-dropdown" id="rmenu-${r.id}">
+                    <button onclick="pinRoom('${r.id}')">${r.isPinned ? 'Unpin' : 'Pin to top'}</button>
+                    <button onclick="dupRoom('${r.id}')">Duplicate</button>
+                    <button onclick="delRoom('${r.id}')" style="color:var(--accent-red);">Delete</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function toggleRoomMenu(id) {
+        document.querySelectorAll('.menu-dropdown').forEach(el => { if(el.id !== 'rmenu-'+id) el.classList.remove('show'); });
+        document.getElementById('rmenu-'+id).classList.toggle('show');
+    }
+    
+    function pinRoom(id) { let r = rooms.find(x=>x.id===id); if(r) r.isPinned = !r.isPinned; saveRooms(); renderRooms(); }
+    function delRoom(id) { if(confirm('Delete this room?')) { rooms = rooms.filter(x=>x.id!==id); saveRooms(); renderRooms(); } }
+    function dupRoom(id) { 
+        let r = rooms.find(x=>x.id===id); 
+        if(r) { 
+            let nr = JSON.parse(JSON.stringify(r)); 
+            nr.id = generateId(); nr.name += ' (Copy)'; nr.code = Math.floor(10000 + Math.random() * 90000).toString();
+            nr.isPinned = false;
+            nr.messages.forEach(m => m.show = false); // 複製時強制關閉顯示狀態
+            rooms.push(nr); saveRooms(); renderRooms(); 
+        } 
+    }
+
+    // ==========================================
+    // 進入中控台 (Dashboard)
+    // ==========================================
+    function openRoom(id) {
+        currentRoom = rooms.find(x=>x.id===id);
+        if(!currentRoom) return;
+
+        document.getElementById('rooms-view').style.display = 'none';
+        document.getElementById('console-view').style.display = 'flex';
+        document.getElementById('console-room-info').textContent = `ROOM: ${currentRoom.name} [${currentRoom.code}]`;
+        
+        activeRoomCode = currentRoom.code;
+        connectedClients = {};
         renderClientList();
+
+        // 訂閱 MQTT
+        mqttClient.unsubscribe(/.*/);
+        mqttClient.subscribe(`matc/v2/room_${activeRoomCode}/heartbeat`);
+        
+        // 恢復倒數狀態
+        cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; activeTimerIndex = -1; activeMessageId = null;
+        
+        // 強制全部 message show=false
+        currentRoom.messages.forEach(m => m.show = false);
+
+        renderTimers();
+        renderMessages();
+        broadcastState();
+
+        // 啟動主控端專屬循環
+        if(!window.masterLoop) {
+            window.masterLoop = setInterval(() => { broadcastState(); }, 1000);
+        }
+    }
+
+    function exitRoom() {
+        document.getElementById('console-view').style.display = 'none';
+        document.getElementById('rooms-view').style.display = 'flex';
+        activeRoomCode = '';
+        if(window.masterLoop) { clearInterval(window.masterLoop); window.masterLoop = null; }
+        saveRooms();
+    }
+
+    // ==========================================
+    // Timers 邏輯
+    // ==========================================
+    function renderTimers() {
+        let list = document.getElementById('timers-list');
+        list.innerHTML = '';
+        currentRoom.timers.forEach((t, i) => {
+            let isActive = (i === activeTimerIndex);
+            let div = document.createElement('div');
+            div.className = 'timer-item' + (isActive ? ' active-running' : '');
+            div.innerHTML = `
+                <div class="timer-main-row">
+                    <div style="color:#777; width:20px;">#${i+1}</div>
+                    <div class="timer-time-inputs">
+                        <input type="number" id="t-m-${t.id}" value="${t.m}" min="0" onchange="updateTimer('${t.id}')"> :
+                        <input type="number" id="t-s-${t.id}" value="${t.s}" min="0" max="59" onchange="updateTimer('${t.id}')">
+                    </div>
+                    <div class="timer-actions">
+                        <button class="btn-square btn-set" onclick="setTimer(${i})">SET</button>
+                        <button class="btn-square btn-settings" onclick="toggleTimerSettings('${t.id}')">設定</button>
+                        <button class="btn-square btn-go" onclick="goTimer(${i})">GO</button>
+                    </div>
+                </div>
+                <div class="timer-settings-panel" id="ts-${t.id}">
+                    <div class="ts-row">
+                        <span class="y">Yellow At:</span>
+                        <input type="number" id="ts-ym-${t.id}" value="${t.ym}" min="0"> m
+                        <input type="number" id="ts-ys-${t.id}" value="${t.ys}" min="0" max="59"> s
+                    </div>
+                    <div class="ts-row">
+                        <span class="r">Red At:</span>
+                        <input type="number" id="ts-rm-${t.id}" value="${t.rm}" min="0"> m
+                        <input type="number" id="ts-rs-${t.id}" value="${t.rs}" min="0" max="59"> s
+                    </div>
+                    <button class="btn-square btn-save-settings" onclick="saveTimerSettings('${t.id}')">SAVE</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function addTimer() {
+        currentRoom.timers.push({ id: generateId(), m: 5, s: 0, ym: 1, ys: 0, rm: 0, rs: 30 });
+        saveRooms(); renderTimers();
+    }
+    
+    function updateTimer(id) {
+        let t = currentRoom.timers.find(x=>x.id===id);
+        if(t) {
+            t.m = parseInt(document.getElementById('t-m-'+id).value)||0;
+            t.s = parseInt(document.getElementById('t-s-'+id).value)||0;
+            saveRooms();
+        }
+    }
+
+    function toggleTimerSettings(id) { document.getElementById('ts-'+id).classList.toggle('show'); }
+    
+    function saveTimerSettings(id) {
+        let t = currentRoom.timers.find(x=>x.id===id);
+        if(t) {
+            t.ym = parseInt(document.getElementById('ts-ym-'+id).value)||0;
+            t.ys = parseInt(document.getElementById('ts-ys-'+id).value)||0;
+            t.rm = parseInt(document.getElementById('ts-rm-'+id).value)||0;
+            t.rs = parseInt(document.getElementById('ts-rs-'+id).value)||0;
+            saveRooms(); toggleTimerSettings(id);
+        }
+    }
+
+    function setTimer(idx) {
+        activeTimerIndex = idx;
+        let t = currentRoom.timers[idx];
+        cdRemainingMs = (t.m * 60 + t.s) * 1000;
+        cdTotalMs = cdRemainingMs;
+        cdIsRunning = false;
+        renderTimers(); broadcastState();
+    }
+
+    function goTimer(idx) {
+        setTimer(idx);
+        if(cdRemainingMs > 0) {
+            cdTargetTime = Date.now() + cdRemainingMs;
+            cdIsRunning = true;
+            broadcastState();
+        }
+    }
+
+    // ==========================================
+    // Messages 邏輯
+    // ==========================================
+    function renderMessages() {
+        let list = document.getElementById('messages-list');
+        list.innerHTML = '';
+        currentRoom.messages.forEach((m, i) => {
+            let div = document.createElement('div');
+            div.className = 'msg-item';
+            div.innerHTML = `
+                <textarea class="msg-input" id="m-txt-${m.id}" onchange="updateMsgText('${m.id}')">${m.text}</textarea>
+                <div class="msg-toolbar">
+                    <div class="msg-styles">
+                        <button class="color-btn ${m.c==='white'?'selected':''}" data-c="white" onclick="setMsgColor('${m.id}','white')"></button>
+                        <button class="color-btn ${m.c==='green'?'selected':''}" data-c="green" onclick="setMsgColor('${m.id}','green')"></button>
+                        <button class="color-btn ${m.c==='red'?'selected':''}" data-c="red" onclick="setMsgColor('${m.id}','red')"></button>
+                        <button class="style-btn ${m.b?'on':''}" style="margin-left:10px;" onclick="toggleMsgStyle('${m.id}','b')">B</button>
+                        <button class="style-btn ${m.cap?'on':''}" onclick="toggleMsgStyle('${m.id}','cap')">AA</button>
+                    </div>
+                </div>
+                <div class="msg-bottom-row">
+                    <select class="msg-mode-select" id="m-mode-${m.id}" onchange="updateMsgMode('${m.id}')">
+                        <option value="bottom" ${m.mode==='bottom'?'selected':''}>Bottom (保留時間)</option>
+                        <option value="fullscreen" ${m.mode==='fullscreen'?'selected':''}>Fullscreen (全螢幕)</option>
+                    </select>
+                    <button class="btn-square btn-show ${m.show?'showing':''}" onclick="toggleMsgShow('${m.id}')">
+                        <div class="led"></div> SHOW
+                    </button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function addMessage() {
+        currentRoom.messages.push({ id: generateId(), text: '', c: 'white', b: false, cap: false, mode: 'bottom', show: false });
+        saveRooms(); renderMessages();
+    }
+
+    function updateMsgText(id) { let m = currentRoom.messages.find(x=>x.id===id); if(m) { m.text = document.getElementById('m-txt-'+id).value; saveRooms(); if(m.show) broadcastState(); } }
+    function updateMsgMode(id) { let m = currentRoom.messages.find(x=>x.id===id); if(m) { m.mode = document.getElementById('m-mode-'+id).value; saveRooms(); if(m.show) broadcastState(); } }
+    function setMsgColor(id, c) { let m = currentRoom.messages.find(x=>x.id===id); if(m) { m.c = c; saveRooms(); renderMessages(); if(m.show) broadcastState(); } }
+    function toggleMsgStyle(id, prop) { let m = currentRoom.messages.find(x=>x.id===id); if(m) { m[prop] = !m[prop]; saveRooms(); renderMessages(); if(m.show) broadcastState(); } }
+    
+    function toggleMsgShow(id) {
+        let target = currentRoom.messages.find(x=>x.id===id);
+        if(!target) return;
+        // 若點擊的是已經開啟的，則關閉它
+        if(target.show) {
+            target.show = false;
+            activeMessageId = null;
+        } else {
+            // 否則關閉所有，開啟這個
+            currentRoom.messages.forEach(m => m.show = false);
+            target.show = true;
+            activeMessageId = id;
+        }
+        saveRooms(); renderMessages(); broadcastState();
+    }
+
+    // ==========================================
+    // Dashboard 快控面板
+    // ==========================================
+    function qcPlayPause() {
+        if(!currentRoom || cdTotalMs === 0) return;
+        if(cdIsRunning) {
+            cdRemainingMs = cdTargetTime - Date.now();
+            cdIsRunning = false;
+        } else {
+            if(cdRemainingMs <= 0) return; // 0不給播
+            cdTargetTime = Date.now() + cdRemainingMs;
+            cdIsRunning = true;
+        }
         broadcastState();
     }
 
-    function connectNetwork() {
-        if(mqttClient) mqttClient.end();
-        mqttClient = mqtt.connect(MQTT_BROKER);
+    function qcAdjust(dir) {
+        if(cdTotalMs === 0) return;
+        let stepMs = parseInt(document.getElementById('qc-step').value);
+        let delta = stepMs * dir;
+        cdRemainingMs += delta;
+        if(cdRemainingMs < 0) cdRemainingMs = 0;
+        
+        // 同步增加/減少 TargetTime 與 TotalMs，才不會讓進度條比例亂掉
+        if(cdIsRunning) cdTargetTime += delta;
+        cdTotalMs += delta; 
+        if(cdTotalMs < cdRemainingMs) cdTotalMs = cdRemainingMs;
 
-        mqttClient.on('connect', () => {
-            document.getElementById('netStatus').classList.add('online');
-            if (isMaster) {
-                // 如果是剛載入網頁，優先尋找 Session 中是否有剛才用的房間
-                let lastRoom = sessionStorage.getItem('matc_last_room');
-                if (lastRoom && !currentRoomCode) {
-                    currentRoomCode = lastRoom;
-                } else if (!currentRoomCode) {
-                    currentRoomCode = Math.floor(10000 + Math.random() * 90000).toString();
-                }
-                // 切換至房間並嘗試恢復記憶
-                changeMasterRoom(currentRoomCode);
-            }
-        });
-
-        mqttClient.on('error', () => document.getElementById('netStatus').classList.remove('online'));
-        mqttClient.on('close', () => document.getElementById('netStatus').classList.remove('online'));
-
-        mqttClient.on('message', (topic, message) => {
-            try {
-                const data = JSON.parse(message.toString());
-                if (isMaster && topic.endsWith('/heartbeat')) {
-                    connectedClients[data.id] = { name: data.name, type: data.type, lastSeen: Date.now() };
-                    renderClientList();
-                }
-                if (!isMaster && topic.endsWith('/state')) {
-                    if (data.masterTimestamp) clockOffset = data.masterTimestamp - Date.now();
-
-                    if (currentMode !== data.mode) {
-                        currentMode = data.mode;
-                        applyStretch(); 
-                    }
-
-                    if(data.mode === 'timecode') {
-                        fps = data.fps; isDropFrame = (fps === 29.97);
-                        tcIsRunning = data.tcIsRunning; tcBaseTime = data.tcBaseTime; tcAccumulatedMs = data.tcAccumulatedMs;
-                        if(data.ub) userBitsDisplay.textContent = data.ub;
-                    } else if(data.mode === 'countdown') {
-                        cdIsRunning = data.cdIsRunning; cdTargetTime = data.cdTargetTime; cdRemainingMs = data.cdRemainingMs;
-                        if (data.cdTotalMs !== undefined) cdTotalMs = data.cdTotalMs;
-                    }
-                }
-            } catch(e) {}
-        });
+        broadcastState();
     }
 
+    function qcPrev() {
+        if(activeTimerIndex > 0) goTimer(activeTimerIndex - 1);
+        else if(currentRoom.timers.length > 0) goTimer(0);
+    }
+    
+    function qcNext() {
+        if(activeTimerIndex < currentRoom.timers.length - 1) goTimer(activeTimerIndex + 1);
+        else if(currentRoom.timers.length > 0) goTimer(currentRoom.timers.length - 1);
+    }
+
+    // ==========================================
+    // 網路通訊與狀態廣播
+    // ==========================================
     function broadcastState() {
-        if (isMaster && mqttClient && currentRoomCode && mqttClient.connected) {
-            const payloadObj = {
-                masterTimestamp: Date.now(),
-                mode: currentMode, fps: fps,
-                tcIsRunning: tcIsRunning, tcBaseTime: tcBaseTime, tcAccumulatedMs: tcAccumulatedMs,
-                cdIsRunning: cdIsRunning, cdTargetTime: cdTargetTime, cdRemainingMs: cdRemainingMs,
-                cdTotalMs: cdTotalMs, 
-                ub: userBitsDisplay.textContent
-            };
-            const payload = JSON.stringify(payloadObj);
-            
-            // === 寫入本地記憶 (Local Storage) 作為斷線恢復快取 ===
-            localStorage.setItem('matc_state_' + currentRoomCode, payload);
-
-            // 加入 { retain: true } 讓 MQTT 伺服器永久記住最後一筆狀態，接收端晚加入也能馬上獲得同步
-            mqttClient.publish(`matc/room_${currentRoomCode}/state`, payload, { qos: 0, retain: true });
+        if (!isMaster || !mqttClient || !activeRoomCode || !mqttClient.connected) return;
+        
+        let msgObj = null;
+        if(activeMessageId) {
+            let m = currentRoom.messages.find(x=>x.id===activeMessageId);
+            if(m && m.show) {
+                let displayColor = m.c === 'green' ? '#00cc00' : (m.c === 'red' ? '#ff3333' : '#ffffff');
+                msgObj = { text: m.text, color: displayColor, bold: m.b, caps: m.cap, mode: m.mode };
+            }
         }
+
+        // 取得當前黃紅燈門檻
+        let yMs = 0, rMs = 0;
+        if(activeTimerIndex >= 0 && currentRoom.timers[activeTimerIndex]) {
+            let t = currentRoom.timers[activeTimerIndex];
+            yMs = (t.ym * 60 + t.ys) * 1000;
+            rMs = (t.rm * 60 + t.rs) * 1000;
+        }
+
+        const payload = JSON.stringify({
+            masterTs: Date.now(),
+            run: cdIsRunning, 
+            target: cdTargetTime, 
+            rem: cdRemainingMs, 
+            tot: cdTotalMs,
+            yms: yMs,
+            rms: rMs,
+            msg: msgObj
+        });
+        mqttClient.publish(`matc/v2/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
     }
 
-    setInterval(() => { if(isMaster) broadcastState(); }, 1500);
+    function slaveConnect() {
+        let code = document.getElementById('slave-room-code').value.trim();
+        if(code.length !== 5) return alert("Code must be 5 digits");
+        activeRoomCode = code;
+        document.getElementById('slave-login').style.display = 'none';
+        document.getElementById('slave-content').style.display = 'flex';
+        
+        mqttClient.subscribe(`matc/v2/room_${activeRoomCode}/state`);
+        
+        if(heartbeatInt) clearInterval(heartbeatInt);
+        heartbeatInt = setInterval(() => {
+            if(mqttClient && mqttClient.connected) {
+                mqttClient.publish(`matc/v2/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName }));
+            }
+        }, 2000);
+    }
+
+    // 接收處理
+    let lastState = null;
+    function handleMqttMessage(topic, message) {
+        try {
+            const data = JSON.parse(message.toString());
+            if (isMaster && topic.endsWith('/heartbeat')) {
+                connectedClients[data.id] = { name: data.name, lastSeen: Date.now() };
+                renderClientList();
+            }
+            if (!isMaster && topic.endsWith('/state')) {
+                clockOffset = data.masterTs - Date.now();
+                cdIsRunning = data.run;
+                cdTargetTime = data.target;
+                cdRemainingMs = data.rem;
+                cdTotalMs = data.tot;
+                lastState = data; // 儲存 state 給繪圖引擎使用
+            }
+        } catch(e) {}
+    }
 
     function renderClientList() {
+        if(!isMaster) return;
         const now = Date.now();
         let html = ''; let count = 0;
         for (const id in connectedClients) {
             if (now - connectedClients[id].lastSeen > 4000) delete connectedClients[id]; 
-            else {
-                let icon = connectedClients[id].type === 'tablet' ? '📱' : '📟';
-                html += `<div class="client-item">${icon} ${connectedClients[id].name}</div>`;
-                count++;
-            }
+            else { html += `<div class="client-item"><span class="status-dot"></span> ${connectedClients[id].name}</div>`; count++; }
         }
-        document.getElementById('clientListBox').innerHTML = html;
-        document.getElementById('clientCount').textContent = count;
+        document.getElementById('m-client-list').innerHTML = html;
+        document.getElementById('m-client-count').textContent = count;
     }
 
-    document.getElementById('joinBtn').addEventListener('click', () => {
-        const code = document.getElementById('joinCodeInput').value.trim();
-        if (code.length !== 5) { alert("請輸入主控台畫面上顯示的 5 位數代碼！"); return; }
+    // ==========================================
+    // 畫面繪製引擎 (每 30ms 重繪)
+    // ==========================================
+    setInterval(() => {
+        let now = Date.now() + clockOffset;
         
-        currentRoomCode = code;
-        mqttClient.subscribe(`matc/room_${currentRoomCode}/state`);
-        timeDisplay.textContent = "SYNCING...";
-        
-        if(heartbeatInterval) clearInterval(heartbeatInterval);
-        heartbeatInterval = setInterval(() => {
-            if(mqttClient && mqttClient.connected) {
-                mqttClient.publish(`matc/room_${currentRoomCode}/heartbeat`, JSON.stringify({ 
-                    id: myDeviceId, type: myDeviceType, name: myDeviceName 
-                }));
+        // 計算現在剩餘時間
+        let ms = cdRemainingMs;
+        if (cdIsRunning) ms = cdTargetTime - now; 
+        if (ms < 0 && !cdIsRunning) ms = cdRemainingMs; // 暫停在負數時保持
+
+        let isOvertime = ms <= 0;
+        let absMs = Math.abs(ms);
+        let totalSec = isOvertime ? Math.floor(absMs / 1000) : Math.ceil(absMs / 1000);
+        let timeStr = (isOvertime && cdTotalMs > 0 ? "+" : "") + `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
+
+        if (ms === 0 && cdTotalMs === 0 && !cdIsRunning) timeStr = "00:00"; // 初始空狀態
+
+        // 取得黃紅燈門檻與訊息 (Slave 取 lastState, Master 算本地)
+        let yMs = 0, rMs = 0, msg = null;
+        if (isMaster && currentRoom) {
+            if(activeTimerIndex >= 0 && currentRoom.timers[activeTimerIndex]) {
+                yMs = (currentRoom.timers[activeTimerIndex].ym * 60 + currentRoom.timers[activeTimerIndex].ys) * 1000;
+                rMs = (currentRoom.timers[activeTimerIndex].rm * 60 + currentRoom.timers[activeTimerIndex].rs) * 1000;
             }
-        }, 2000);
-    });
+            if(activeMessageId) {
+                let m = currentRoom.messages.find(x=>x.id===activeMessageId);
+                if(m && m.show) msg = { text: m.text, color: m.c==='green'?'#00cc00':(m.c==='red'?'#ff3333':'#ffffff'), bold: m.b, caps: m.cap, mode: m.mode };
+            }
+        } else if (!isMaster && lastState) {
+            yMs = lastState.yms; rMs = lastState.rms; msg = lastState.msg;
+        }
 
-    // ==========================================
-    // 4. 控制面板事件
-    // ==========================================
+        // --- Master 預覽更新 ---
+        if(isMaster && currentRoom) {
+            let mTime = document.getElementById('m-prev-time');
+            let mProg = document.getElementById('m-prog-bar');
+            let mMsgBot = document.getElementById('m-prev-msg-bot');
+            let mMsgFs = document.getElementById('m-prev-msg-fs');
+            let playBtn = document.getElementById('btn-master-play');
 
-    document.getElementById('masterRejoinBtn').addEventListener('click', () => {
-        if (!isMaster) return;
-        const code = document.getElementById('masterRoomInput').value.trim();
-        if (code.length !== 5) { alert("請輸入 5 位數房間代碼以重新連線！"); return; }
-        changeMasterRoom(code);
-    });
+            mTime.textContent = timeStr;
+            if(playBtn) playBtn.textContent = cdIsRunning ? "‖ PAUSE" : "▶ PLAY";
 
-    document.getElementById('masterNewRoomBtn').addEventListener('click', () => {
-        if (!isMaster) return;
-        const newCode = Math.floor(10000 + Math.random() * 90000).toString();
-        changeMasterRoom(newCode);
-    });
-
-    document.getElementById('mainMode').addEventListener('change', (e) => {
-        if(!isMaster) return;
-        currentMode = e.target.value; tcIsRunning = false; cdIsRunning = false; 
-        document.querySelectorAll('.control-group').forEach(el => el.classList.remove('active'));
-        document.getElementById('ctrl-' + currentMode).classList.add('active');
-        applyStretch(); 
-        broadcastState();
-    });
-
-    document.getElementById('tcStart').addEventListener('click', () => {
-        if(tcIsRunning || !isMaster) return;
-        tcBaseTime = Date.now(); tcIsRunning = true; broadcastState();
-    });
-    document.getElementById('tcStop').addEventListener('click', () => {
-        if(!tcIsRunning || !isMaster) return;
-        tcAccumulatedMs += (Date.now() - tcBaseTime); tcIsRunning = false; broadcastState();
-    });
-    document.getElementById('tcReset').addEventListener('click', () => {
-        if(!isMaster) return;
-        tcIsRunning = false; tcAccumulatedMs = 0; tcBaseTime = Date.now(); broadcastState();
-    });
-    document.getElementById('fpsSelect').addEventListener('change', (e) => {
-        if(!isMaster) return;
-        fps = parseFloat(e.target.value); isDropFrame = (fps === 29.97);
-        tcIsRunning = false; tcAccumulatedMs = 0; broadcastState();
-    });
-    ubInput.addEventListener('input', () => { if(isMaster) broadcastState(); });
-
-    document.getElementById('cdSet').addEventListener('click', () => {
-        if(!isMaster) return;
-        cdIsRunning = false; 
-        cdRemainingMs = ((parseInt(document.getElementById('cdMin').value)||0)*60 + parseInt(document.getElementById('cdSec').value)||0) * 1000;
-        cdTotalMs = cdRemainingMs; 
-        broadcastState();
-    });
-
-    document.getElementById('cdStart').addEventListener('click', () => {
-        if(cdIsRunning || !isMaster) return;
-        if(cdRemainingMs <= 0) return;
-        cdTargetTime = Date.now() + cdRemainingMs; 
-        cdIsRunning = true; 
-        broadcastState();
-    });
-
-    document.getElementById('cdStop').addEventListener('click', () => {
-        if(!cdIsRunning || !isMaster) return;
-        cdRemainingMs = cdTargetTime - Date.now(); 
-        cdIsRunning = false; 
-        broadcastState();
-    });
-
-    document.getElementById('cdReset').addEventListener('click', () => {
-        if(!isMaster) return;
-        cdIsRunning = false; 
-        cdRemainingMs = 0; 
-        cdTotalMs = 0; 
-        broadcastState();
-    });
-
-    // ==========================================
-    // 5. 雙重全螢幕處理
-    // ==========================================
-    const stretchWrapper = document.getElementById('stretchWrapper');
-    const fsBtn = document.getElementById('fsBtn');
-    let isFakeFullscreen = false;
-
-    function applyStretch() {
-        if (document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
-            stretchWrapper.style.transform = 'none';
+            applyStyleAndProgress(ms, cdTotalMs, isOvertime, yMs, rMs, mTime, mProg, null);
+            applyMessageUI(msg, mTime, mMsgBot, mMsgFs);
             
-            const rectW = stretchWrapper.offsetWidth;
-            const rectH = stretchWrapper.offsetHeight;
+            // 處理發光
+            if(isOvertime && cdIsRunning && cdTotalMs > 0 && !hasFlashed) {
+                hasFlashed = true;
+                document.getElementById('master-preview-box').classList.add('slave-flash');
+                setTimeout(()=> document.getElementById('master-preview-box').classList.remove('slave-flash'), 1000);
+            } else if (ms > 0) hasFlashed = false;
             
+            applyPreviewScale();
+        }
+
+        // --- Slave 畫面更新 ---
+        if(!isMaster && activeRoomCode) {
+            let sTime = document.getElementById('s-time');
+            let sProg = document.getElementById('s-prog-bar');
+            let sMsgBot = document.getElementById('s-msg-bot');
+            let sMsgFs = document.getElementById('s-msg-fs');
+
+            sTime.textContent = timeStr;
+            applyStyleAndProgress(ms, cdTotalMs, isOvertime, yMs, rMs, sTime, sProg, document.getElementById('slave-content'));
+            applyMessageUI(msg, sTime, sMsgBot, sMsgFs);
+
+            if(isOvertime && cdIsRunning && cdTotalMs > 0 && !hasFlashed) {
+                hasFlashed = true;
+                document.getElementById('slave-content').classList.add('slave-flash');
+                setTimeout(()=> document.getElementById('slave-content').classList.remove('slave-flash'), 1000);
+            } else if (ms > 0) hasFlashed = false;
+
+            applySlaveScale();
+        }
+
+    }, 30);
+
+    function pad(num) { return num.toString().padStart(2, '0'); }
+
+    // 套用顏色與進度條邏輯
+    function applyStyleAndProgress(ms, tot, isOvertime, yMs, rMs, timeEl, progEl, flashEl) {
+        if (ms === 0 && tot === 0) {
+            timeEl.classList.remove('overtime');
+            progEl.style.width = '0%';
+            progEl.className = 'prog-bar slave-prog-bar';
+            return;
+        }
+
+        if (isOvertime) {
+            timeEl.classList.add('overtime');
+            progEl.style.width = '0%';
+            progEl.className = 'prog-bar slave-prog-bar danger';
+        } else {
+            timeEl.classList.remove('overtime');
+            let percent = (ms / tot) * 100;
+            progEl.style.width = percent + '%';
+            
+            if (ms <= rMs) progEl.className = 'prog-bar slave-prog-bar danger';
+            else if (ms <= yMs) progEl.className = 'prog-bar slave-prog-bar warning';
+            else progEl.className = 'prog-bar slave-prog-bar';
+        }
+    }
+
+    // 套用 Message 顯示邏輯
+    function applyMessageUI(msg, timeEl, msgBot, msgFs) {
+        if(!msg) {
+            timeEl.style.display = 'block';
+            msgBot.style.display = 'none';
+            msgFs.style.display = 'none';
+            return;
+        }
+        
+        let formattedText = msg.caps ? msg.text.toUpperCase() : msg.text;
+        let fw = msg.bold ? 'bold' : 'normal';
+
+        if(msg.mode === 'fullscreen') {
+            timeEl.style.display = 'none';
+            msgBot.style.display = 'none';
+            msgFs.style.display = 'flex';
+            msgFs.textContent = formattedText;
+            msgFs.style.color = msg.color;
+            msgFs.style.fontWeight = fw;
+        } else {
+            timeEl.style.display = 'block';
+            msgFs.style.display = 'none';
+            msgBot.style.display = 'block';
+            msgBot.textContent = formattedText;
+            msgBot.style.color = msg.color;
+            msgBot.style.fontWeight = fw;
+        }
+    }
+
+    // ==========================================
+    // 縮放與版面功能
+    // ==========================================
+
+    // 進度條 Hover 顯示時間
+    function setupProgressHover() {
+        let pContainer = document.getElementById('m-prog-container');
+        let pTip = document.getElementById('prog-tooltip');
+        pContainer.addEventListener('mousemove', (e) => {
+            if(cdTotalMs === 0) return;
+            let rect = pContainer.getBoundingClientRect();
+            let percent = e.offsetX / rect.width;
+            let hoverMs = cdTotalMs * percent;
+            let totalSec = Math.ceil(hoverMs / 1000);
+            pTip.textContent = `${pad(Math.floor(totalSec / 60))}:${pad(totalSec % 60)}`;
+            pTip.style.left = e.offsetX + 'px';
+            pTip.style.display = 'block';
+        });
+        pContainer.addEventListener('mouseleave', () => pTip.style.display = 'none');
+    }
+
+    // 左中右欄位拖曳 (Splitters)
+    function setupResizers() {
+        const ws = document.getElementById('workspace');
+        const pLeft = document.getElementById('panel-left');
+        const pMid = document.getElementById('panel-mid');
+        const pRight = document.getElementById('panel-right');
+        const rLM = document.getElementById('resizer-lm');
+        const rMR = document.getElementById('resizer-mr');
+
+        let isResizing = false, currentResizer = null;
+
+        rLM.addEventListener('mousedown', (e) => { isResizing = true; currentResizer = 'LM'; rLM.classList.add('dragging'); });
+        rMR.addEventListener('mousedown', (e) => { isResizing = true; currentResizer = 'MR'; rMR.classList.add('dragging'); });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing || window.innerWidth <= 1024) return;
+            let wsRect = ws.getBoundingClientRect();
+            let newX = e.clientX - wsRect.left;
+            let percentX = (newX / wsRect.width) * 100;
+
+            if (currentResizer === 'LM') {
+                if (percentX > 10 && percentX < 80) {
+                    let oldLeftPct = parseFloat(pLeft.style.width || "16.66");
+                    let delta = percentX - oldLeftPct;
+                    let oldMidPct = parseFloat(pMid.style.width || "50");
+                    pLeft.style.width = percentX + "%";
+                    pMid.style.width = (oldMidPct - delta) + "%";
+                }
+            } else if (currentResizer === 'MR') {
+                if (percentX > 20 && percentX < 90) {
+                    let leftPct = parseFloat(pLeft.style.width || "16.66");
+                    let newMidPct = percentX - leftPct;
+                    let newRightPct = 100 - percentX;
+                    pMid.style.width = newMidPct + "%";
+                    pRight.style.width = newRightPct + "%";
+                }
+            }
+            applyPreviewScale(); // 拖曳時重新計算左側預覽縮放
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false; currentResizer = null;
+            rLM.classList.remove('dragging'); rMR.classList.remove('dragging');
+        });
+    }
+
+    // Master 端預覽框動態縮放
+    function applyPreviewScale() {
+        if(!isMaster || !currentRoom) return;
+        const box = document.getElementById('master-preview-box');
+        const wrapper = document.getElementById('master-preview-scale');
+        wrapper.style.transform = 'none';
+        
+        let rectBox = box.getBoundingClientRect();
+        let rectWrap = wrapper.getBoundingClientRect();
+        
+        if(rectWrap.width === 0) return;
+        // 預留 10% 邊距
+        let scaleW = (rectBox.width * 0.9) / rectWrap.width;
+        let scaleH = (rectBox.height * 0.9) / rectWrap.height;
+        let scale = Math.min(scaleW, scaleH);
+        
+        wrapper.style.transform = `scale(${scale})`;
+    }
+
+    // Slave 端真實顯示器全螢幕動態縮放
+    function applySlaveScale() {
+        if(isMaster || !activeRoomCode) return;
+        const stretch = document.getElementById('slave-stretch');
+        if(document.fullscreenElement || document.webkitFullscreenElement || isFakeFullscreen) {
+            stretch.style.transform = 'none';
+            // 將原本 padding 拿掉以求精準測量
+            const rectW = stretch.offsetWidth;
+            const rectH = stretch.offsetHeight;
+            
+            // 嚴格採用 85% 橫向滿版並縮減的公式
             let scale = (window.innerWidth / rectW) * 0.85;
-            if (currentMode === 'countdown') { scale *= 1.5; }
-
-            let maxSafeScaleW = (window.innerWidth * 0.95) / rectW;
-            let maxSafeScaleH = (window.innerHeight * 0.85) / rectH;
-            scale = Math.min(scale, maxSafeScaleW, maxSafeScaleH);
-
-            stretchWrapper.style.transform = `scale(${scale})`;
-            fsBtn.textContent = '[ EXIT ]';
+            // 倒數計時極限防護
+            let maxSafeW = (window.innerWidth * 0.95) / rectW;
+            let maxSafeH = (window.innerHeight * 0.85) / rectH;
+            
+            scale = Math.min(scale, maxSafeW, maxSafeH);
+            stretch.style.transform = `scale(${scale})`;
         } else {
-            stretchWrapper.style.transform = 'none';
-            fsBtn.textContent = '[ FULLSCREEN ]';
+            stretch.style.transform = 'none';
         }
     }
 
-    function enableFakeFullscreen() { isFakeFullscreen = true; displayContainer.classList.add('fake-fullscreen'); applyStretch(); }
-    function disableFakeFullscreen() { isFakeFullscreen = false; displayContainer.classList.remove('fake-fullscreen'); applyStretch(); }
+    window.addEventListener('resize', () => { applyPreviewScale(); applySlaveScale(); });
 
-    fsBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement && !isFakeFullscreen) {
-            if (displayContainer.requestFullscreen) displayContainer.requestFullscreen().catch(() => enableFakeFullscreen());
-            else if (displayContainer.webkitRequestFullscreen) displayContainer.webkitRequestFullscreen();
-            else enableFakeFullscreen();
+    // Master 預覽框全螢幕機制
+    const globalFsBtn = document.getElementById('global-fs-btn');
+    let isFakeFullscreen = false;
+    globalFsBtn.addEventListener('click', () => {
+        let container = isMaster ? document.getElementById('master-preview-box') : document.getElementById('slave-content');
+        if (!document.fullscreenElement && !isFakeFullscreen) {
+            if (container.requestFullscreen) container.requestFullscreen().catch(()=> { isFakeFullscreen=true; container.style.position='fixed'; container.style.inset=0; container.style.zIndex=9999; });
+            else { isFakeFullscreen=true; container.style.position='fixed'; container.style.inset=0; container.style.zIndex=9999; }
         } else {
-            if (document.fullscreenElement) document.exitFullscreen();
-            else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
-            else if (isFakeFullscreen) disableFakeFullscreen();
+            if (document.exitFullscreen) document.exitFullscreen();
+            else { isFakeFullscreen=false; container.style.position='relative'; container.style.zIndex='auto'; }
         }
     });
-    
-    document.addEventListener('fullscreenchange', applyStretch);
-    document.addEventListener('webkitfullscreenchange', applyStretch);
-    window.addEventListener('resize', applyStretch);
 
 </script>
 </body>
