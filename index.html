@@ -20,7 +20,7 @@
         --accent-green: #00cc00;
         --accent-red: #ff3333;
         --accent-yellow: #ffcc00;
-        --border-rad: 6px; /* Slightly more rounded for that cute but pro look */
+        --border-rad: 6px; 
     }
 
     * { box-sizing: border-box; }
@@ -98,7 +98,7 @@
     .workspace { display: flex; flex: 1; overflow: hidden; width: 100%; }
     .panel { display: flex; flex-direction: column; background: var(--panel-bg); overflow: hidden; }
     
-    /* Unified Header for the 3 panels (no bottom border) */
+    /* Unified Header */
     .panel-header { 
         padding: 15px 15px 5px 15px; background: var(--panel-bg); 
         font-weight: normal; font-size: 1.1rem; color: #ccc; flex-shrink: 0;
@@ -136,21 +136,25 @@
     .preview-msg { font-size: 1rem; color: #fff; font-weight: normal; text-align: center; margin-top: 5px; transition: opacity 0.2s; }
     .preview-msg.msg-fullscreen { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-size: 2rem; z-index: 5; }
     
-    /* Segmented Progress Bar */
+    /* Segmented Progress Bar (Left to Right Depletion) */
     .prog-container { width: 100%; height: 25px; background: #111; border-radius: var(--border-rad); position: relative; margin-top: 5px; overflow: hidden;}
     .prog-bg { position: absolute; inset: 0; }
-    .prog-fill { position: absolute; top: 0; bottom: 0; right: 0; background: rgba(0,0,0,0.85); }
+    .prog-fill { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.85); transition: width 0.1s linear;}
     .prog-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-50%); z-index: 2;}
     .prog-marker-time { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 2px 4px; border-radius: 2px; font-size: 0.7rem; font-weight: bold; margin-bottom: 2px; white-space: nowrap;}
 
-    /* Quick Controls Symmetrical */
-    .quick-controls { display: flex; justify-content: center; align-items: center; margin-top: 15px; gap: 6px; flex-wrap: wrap;}
-    .qc-select { background: #000; border: 1px solid #444; color: #fff; padding: 4px; font-size: 0.8rem; width: 60px; text-align: center;}
-    .qc-btn { background: #111; border: 1px solid #444; color: #fff; padding: 6px 12px; font-size: 1rem; border-radius: var(--border-rad); cursor: pointer; display: flex; align-items: center; justify-content: center;}
-    .qc-btn:hover { background: #333; }
-    .qc-btn-play { color: var(--accent-green); width: 40px;}
-    .qc-btn-pause { color: var(--accent-red); width: 40px;}
-    .qc-btn-adjust { width: 45px; font-size: 0.9rem; font-weight: bold;}
+    /* Quick Controls Symmetrical & Uniform */
+    .quick-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; gap: 5px; flex-wrap: nowrap; width: 100%;}
+    .qc-item {
+        flex: 1; height: 36px; background: #111; border: 1px solid #444; color: #fff; 
+        padding: 0; font-size: 0.95rem; border-radius: var(--border-rad); cursor: pointer; 
+        display: flex; align-items: center; justify-content: center; text-align: center;
+        min-width: 0;
+    }
+    select.qc-item { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+    .qc-item:hover { background: #333; }
+    .qc-btn-play { color: var(--accent-green); font-size: 1.1rem; }
+    .qc-btn-pause { color: var(--accent-red); font-size: 1.1rem; }
 
     .client-list { font-size: 0.85rem; color: #aaa; border-top: 1px solid #333; padding-top: 10px; margin-top: 10px; flex: 1; overflow-y: auto;}
 
@@ -195,11 +199,11 @@
     .add-block-btn { width: 100%; border: 1px dashed #444; color: #888; padding: 10px; background: transparent; font-size: 0.9rem; border-radius: var(--border-rad); transition: 0.2s; margin-top: 5px;}
     .add-block-btn:hover { border-color: #fff; color: #fff; background: #111; }
 
-    /* Flash Animation */
+    /* Flash Animation scoped to specific elements */
     .flash-alert { animation: flashAlertAnim 0.15s 6 alternate ease-in-out; }
     @keyframes flashAlertAnim {
-        0% { filter: invert(0); background-color: var(--bg-color); }
-        100% { filter: invert(1); background-color: #ffffff; }
+        0% { filter: invert(0); }
+        100% { filter: invert(1); }
     }
 
     /* === 4. Slave Display === */
@@ -219,7 +223,7 @@
     
     .slave-prog-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; background: #111; z-index: 60;}
     .slave-prog-bg { position: absolute; inset: 0; }
-    .slave-prog-fill { position: absolute; top:0; right:0; bottom:0; background: rgba(0,0,0,0.85); transition: width 0.1s linear; }
+    .slave-prog-fill { position: absolute; top:0; left:0; bottom:0; background: rgba(0,0,0,0.85); transition: width 0.1s linear; }
 
     @media (max-width: 1024px) {
         .workspace { flex-direction: column; overflow-y: auto; }
@@ -345,7 +349,7 @@
                     </div>
                     
                     <div class="quick-controls">
-                        <select class="qc-select" id="qc-step-l" onchange="syncQcStep('l')">
+                        <select class="qc-item" id="qc-step-l" onchange="syncQcStep('l')">
                             <option value="1000">1s</option>
                             <option value="10000">10s</option>
                             <option value="30000">30s</option>
@@ -355,12 +359,12 @@
                             <option value="1200000">20m</option>
                             <option value="1800000">30m</option>
                         </select>
-                        <button class="qc-btn qc-btn-adjust" id="btn-qc-minus" onclick="qcAdjust(-1)">-</button>
-                        <button class="qc-btn" onclick="qcPrev()">|◀</button>
-                        <button class="qc-btn qc-btn-play" id="btn-qc-playpause" onclick="qcPlayPause()">▶</button>
-                        <button class="qc-btn" onclick="qcNext()">▶|</button>
-                        <button class="qc-btn qc-btn-adjust" id="btn-qc-plus" onclick="qcAdjust(1)">+</button>
-                        <select class="qc-select" id="qc-step-r" onchange="syncQcStep('r')">
+                        <button class="qc-item" id="btn-qc-minus" onclick="qcAdjust(-1)">-</button>
+                        <button class="qc-item" onclick="qcPrev()">|◀</button>
+                        <button class="qc-item qc-btn-play" id="btn-qc-playpause" onclick="qcPlayPause()">▶</button>
+                        <button class="qc-item" onclick="qcNext()">▶|</button>
+                        <button class="qc-item" id="btn-qc-plus" onclick="qcAdjust(1)">+</button>
+                        <select class="qc-item" id="qc-step-r" onchange="syncQcStep('r')">
                             <option value="1000">1s</option>
                             <option value="10000">10s</option>
                             <option value="30000">30s</option>
@@ -482,10 +486,10 @@
     }
 
     function loadRooms() {
-        let saved = localStorage.getItem('matc_rooms_v5');
+        let saved = localStorage.getItem('matc_rooms_v6');
         if (saved) { try { rooms = JSON.parse(saved); } catch(e) { rooms = []; } }
     }
-    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v5', JSON.stringify(rooms)); }
+    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v6', JSON.stringify(rooms)); }
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 4); }
 
     function openCreateRoomModal() {
@@ -566,7 +570,7 @@
         connectedClients = {}; renderClientList();
 
         mqttClient.unsubscribe(/.*/);
-        mqttClient.subscribe(`matc/v5/room_${activeRoomCode}/heartbeat`);
+        mqttClient.subscribe(`matc/v6/room_${activeRoomCode}/heartbeat`);
         
         cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; activeTimerIndex = -1; activeMessageId = null;
         sysBlackout = false; document.getElementById('led-blackout').className = 'led';
@@ -589,9 +593,20 @@
     function triggerFlash() { lastFlashTs = Date.now(); broadcastState(); playFlashAnimation(); }
 
     function playFlashAnimation() {
-        document.body.classList.remove('flash-alert');
-        void document.body.offsetWidth; 
-        document.body.classList.add('flash-alert');
+        let pBox = document.getElementById('master-preview-box');
+        let sView = document.getElementById('slave-view');
+        
+        if (pBox) {
+            pBox.classList.remove('flash-alert');
+            void pBox.offsetWidth; // force reflow
+            pBox.classList.add('flash-alert');
+        }
+        
+        if (sView && activeRoomCode) {
+            sView.classList.remove('flash-alert');
+            void sView.offsetWidth; // force reflow
+            sView.classList.add('flash-alert');
+        }
     }
 
     function renderTimers() {
@@ -730,23 +745,16 @@
     }
 
     // === Dashboard Quick Controls ===
-    function updateQcText() {
-        let text = document.getElementById('qc-step-l').options[document.getElementById('qc-step-l').selectedIndex].text;
-        document.getElementById('btn-qc-minus').textContent = "- " + text;
-        document.getElementById('btn-qc-plus').textContent = "+ " + text;
-    }
-    
     function syncQcStep(src) {
         let val = document.getElementById('qc-step-' + src).value;
         document.getElementById('qc-step-l').value = val;
         document.getElementById('qc-step-r').value = val;
-        updateQcText();
     }
 
     function updatePlayPauseBtn() {
         let btn = document.getElementById('btn-qc-playpause');
-        if (cdIsRunning) { btn.textContent = '⏸'; btn.className = 'qc-btn qc-btn-pause'; } 
-        else { btn.textContent = '▶'; btn.className = 'qc-btn qc-btn-play'; }
+        if (cdIsRunning) { btn.textContent = '⏸'; btn.className = 'qc-item qc-btn-pause'; } 
+        else { btn.textContent = '▶'; btn.className = 'qc-item qc-btn-play'; }
     }
 
     function qcPlayPause() {
@@ -800,7 +808,7 @@
             appr: appr, fps: fps, df: df,
             blk: sysBlackout, fTs: lastFlashTs
         });
-        mqttClient.publish(`matc/v5/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
+        mqttClient.publish(`matc/v6/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
     }
 
     function slaveConnect() {
@@ -810,9 +818,9 @@
         document.getElementById('slave-login').style.display = 'none';
         document.getElementById('slave-content').style.display = 'flex';
         
-        mqttClient.subscribe(`matc/v5/room_${activeRoomCode}/state`);
+        mqttClient.subscribe(`matc/v6/room_${activeRoomCode}/state`);
         if(heartbeatInt) clearInterval(heartbeatInt);
-        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v5/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
+        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v6/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
     }
 
     let lastState = null;
@@ -959,14 +967,18 @@
         let yPct = 0, rPct = 0;
         if(tot > 0) { yPct = (yMs / tot) * 100; rPct = (rMs / tot) * 100; }
         
-        bgEl.style.background = `linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) ${rPct}%, var(--accent-yellow) ${rPct}%, var(--accent-yellow) ${yPct}%, var(--accent-green) ${yPct}%, var(--accent-green) 100%)`;
-        fillEl.style.width = (100 - pct) + '%';
+        // Progress bar background from Green to Yellow to Red (Left to Right)
+        bgEl.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${100-yPct}%, var(--accent-yellow) ${100-yPct}%, var(--accent-yellow) ${100-rPct}%, var(--accent-red) ${100-rPct}%, var(--accent-red) 100%)`;
+        
+        // Depleting from left to right -> black mask starts on left and grows.
+        let maskWidth = 100 - pct;
+        fillEl.style.width = maskWidth + '%';
         
         if (markerEl && markerTimeEl) {
             if (tot === 0) { markerEl.style.display = 'none'; }
             else {
                 markerEl.style.display = 'block';
-                markerEl.style.left = pct + '%';
+                markerEl.style.left = maskWidth + '%';
                 let tSec = Math.ceil(Math.abs(ms) / 1000);
                 markerTimeEl.textContent = `${pad(Math.floor(tSec/60))}:${pad(tSec%60)}`;
             }
