@@ -11,22 +11,23 @@
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <style>
+    /* Stagetimer.io Inspired Dark Theme */
     :root {
-        --bg-color: #000000;
-        --panel-bg: #0a0a0a;
+        --bg-color: #121212;
+        --panel-bg: #1e1e1e;
         --border-color: #333333;
         --text-main: #ffffff;
-        --text-muted: #888888;
-        --accent-green: #00cc00;
-        --accent-red: #ff3333;
-        --accent-yellow: #ffcc00;
-        --border-rad: 6px; 
+        --text-muted: #a0a0a0;
+        --accent-green: #34d058;
+        --accent-red: #ff3b30;
+        --accent-yellow: #ffd60a;
+        --border-rad: 8px; 
     }
 
     * { box-sizing: border-box; }
 
     body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background-color: var(--bg-color);
         color: var(--text-main);
         margin: 0; padding: 0;
@@ -49,160 +50,160 @@
         position: fixed; inset: 0; background: var(--bg-color); z-index: 9999;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
-    #role-screen h1 { font-size: 2.5rem; color: var(--text-main); letter-spacing: 2px; }
+    #role-screen h1 { font-size: 2.5rem; color: var(--text-main); letter-spacing: 2px; font-weight: 800;}
     .btn-square {
-        background: transparent; color: var(--text-main); border: 1px solid var(--border-color);
-        padding: 6px 12px; font-size: 0.85rem;
+        background: #2a2a2a; color: var(--text-main); border: 1px solid var(--border-color);
+        padding: 8px 16px; font-size: 0.9rem; font-weight: 600;
         display: flex; align-items: center; justify-content: center; gap: 5px;
     }
-    .btn-square:hover { border-color: var(--text-main); background: #111; }
+    .btn-square:hover { border-color: var(--text-muted); background: #3a3a3a; }
     
     .role-input {
-        background: #111; border: 1px solid var(--border-color); color: #fff;
-        padding: 10px; font-size: 1.2rem; text-align: center; width: 250px; margin-bottom: 20px;
+        background: #1a1a1a; border: 1px solid var(--border-color); color: #fff;
+        padding: 12px; font-size: 1.2rem; text-align: center; width: 250px; margin-bottom: 20px;
     }
 
     /* === 2. Rooms Lobby === */
-    #rooms-view { display: none; flex-direction: column; height: 100vh; padding: 20px; overflow-y: auto; background: var(--bg-color); }
-    .rooms-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
-    .rooms-header h2 { margin: 0; font-size: 1.8rem; font-weight: normal; }
+    #rooms-view { display: none; flex-direction: column; height: 100vh; padding: 30px; overflow-y: auto; background: var(--bg-color); }
+    .rooms-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
+    .rooms-header h2 { margin: 0; font-size: 2rem; font-weight: bold; }
 
-    .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+    .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
     .room-card {
-        background: var(--panel-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: var(--border-rad);
-        display: flex; flex-direction: column; gap: 10px; position: relative;
+        background: var(--panel-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: var(--border-rad);
+        display: flex; flex-direction: column; gap: 12px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .room-card.pinned { border-color: var(--accent-yellow); }
-    .room-card h3 { margin: 0; font-size: 1.4rem; }
-    .room-stats { font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;}
-    .room-actions { display: flex; gap: 10px; margin-top: 10px; }
+    .room-card h3 { margin: 0; font-size: 1.5rem; }
+    .room-stats { font-size: 0.9rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;}
+    .room-actions { display: flex; gap: 10px; margin-top: 15px; }
 
     /* Modals */
     .modal-overlay {
         display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000;
-        align-items: center; justify-content: center;
+        align-items: center; justify-content: center; backdrop-filter: blur(5px);
     }
-    .modal-box { background: #111; border: 1px solid #444; padding: 20px; width: 350px; display: flex; flex-direction: column; gap: 15px; border-radius: var(--border-rad); box-shadow: 0 10px 30px rgba(0,0,0,0.8);}
-    .modal-box h3 { margin: 0 0 10px 0; font-weight: normal; }
-    .modal-box input, .modal-box select { background: #000; border: 1px solid #333; color: #fff; padding: 8px; font-size: 1rem; width: 100%;}
-    .modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+    .modal-box { background: var(--panel-bg); border: 1px solid #444; padding: 25px; width: 380px; display: flex; flex-direction: column; gap: 15px; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.9);}
+    .modal-box h3 { margin: 0 0 10px 0; font-weight: bold; font-size: 1.4rem;}
+    .modal-box input, .modal-box select { background: #121212; border: 1px solid #333; color: #fff; padding: 10px; font-size: 1rem; width: 100%;}
+    .modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
 
     /* === 3. Console Dashboard === */
     #console-view { display: none; flex-direction: column; height: 100vh; }
     .console-header {
-        height: 50px; background: #050505; border-bottom: 1px solid var(--border-color);
+        height: 60px; background: #0a0a0a; border-bottom: 1px solid var(--border-color);
         display: flex; align-items: center; padding: 0 20px; justify-content: space-between; flex-shrink: 0;
     }
-    .console-header .room-info { font-size: 1.1rem; color: var(--text-muted); }
+    .console-header .room-info { font-size: 1.2rem; font-weight: 600; color: #ddd; }
     
     .workspace { display: flex; flex: 1; overflow: hidden; width: 100%; }
     .panel { display: flex; flex-direction: column; background: var(--panel-bg); overflow: hidden; }
     
     /* Unified Header */
     .panel-header { 
-        padding: 15px 15px 5px 15px; background: var(--panel-bg); 
-        font-weight: normal; font-size: 1.1rem; color: #ccc; flex-shrink: 0;
+        padding: 15px 20px 10px 20px; background: var(--panel-bg); 
+        font-weight: bold; font-size: 1.15rem; color: #eee; flex-shrink: 0;
         display: flex; justify-content: space-between; align-items: center;
     }
-    .panel-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+    .panel-content { flex: 1; overflow-y: auto; padding: 15px 20px; display: flex; flex-direction: column; gap: 12px; }
     
-    .resizer { width: 6px; background: #111; cursor: col-resize; flex-shrink: 0; transition: background 0.2s; border-left: 1px solid #000; border-right: 1px solid #000; }
+    .resizer { width: 4px; background: #111; cursor: col-resize; flex-shrink: 0; transition: background 0.2s; border-left: 1px solid #000; border-right: 1px solid #000; }
     .resizer:hover, .resizer.dragging { background: var(--text-muted); }
 
     .dropdown { position: relative; display: inline-block; }
     .dropdown-menu { 
         display: none; position: absolute; right: 0; top: 100%; margin-top: 5px;
-        background: #111; border: 1px solid var(--border-color); z-index: 100; border-radius: var(--border-rad);
-        flex-direction: column; min-width: 100px; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+        background: #222; border: 1px solid var(--border-color); z-index: 100; border-radius: var(--border-rad);
+        flex-direction: column; min-width: 120px; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
     }
     .dropdown-menu.show { display: flex; }
-    .dropdown-menu button { background: transparent; border: none; color: #ccc; padding: 8px 15px; text-align: left; font-size: 0.85rem; border-radius: 0; }
+    .dropdown-menu button { background: transparent; border: none; color: #ddd; padding: 10px 15px; text-align: left; font-size: 0.9rem; border-radius: 0; font-weight: 500;}
     .dropdown-menu button:hover { background: #333; color: #fff; }
 
     /* LED */
-    .led { width: 10px; height: 10px; border-radius: 50%; background: #333; border: 1px solid #111; transition: 0.2s; }
-    .led.active { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); border-color: #fff; }
+    .led { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 1px solid #111; transition: 0.2s; }
+    .led.active { background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); border-color: #fff; }
 
     /* === Left Panel (Dashboard) 1/6 === */
-    #panel-left { width: 16.66%; min-width: 250px; }
-    .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--border-color); border-radius: var(--border-rad); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    #panel-left { width: 16.66%; min-width: 280px; }
+    .preview-box { width: 100%; aspect-ratio: 16/9; background: #080808; border: 1px solid var(--border-color); border-radius: var(--border-rad); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .preview-scale-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; transform-origin: center; width: max-content; }
     
-    .preview-time { font-family: 'Digital-7 Mono', monospace; font-size: 5rem; color: var(--accent-green); line-height: 0.9; text-align: center; white-space: pre-wrap; text-shadow: none !important; letter-spacing: -2px;}
+    .preview-time { font-family: 'Digital-7 Mono', monospace; font-size: 5.5rem; color: var(--accent-green); line-height: 0.9; text-align: center; white-space: pre-wrap; text-shadow: none !important; letter-spacing: -2px;}
     .preview-time.warning-text { color: var(--accent-yellow) !important; }
     .preview-time.danger-text { color: var(--accent-red) !important; }
     .sub-time { font-size: 0.25em; color: inherit; display: block; margin-top: 2px; }
 
-    .preview-msg { font-size: 1rem; color: #fff; font-weight: normal; text-align: center; margin-top: 5px; transition: opacity 0.2s; }
-    .preview-msg.msg-fullscreen { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-size: 2rem; z-index: 5; }
+    .preview-msg { font-size: 1rem; color: #fff; font-weight: bold; text-align: center; margin-top: 5px; transition: opacity 0.2s; }
+    .preview-msg.msg-fullscreen { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; z-index: 5; }
     
     /* Segmented Progress Bar (Left to Right Depletion) */
-    .prog-container { width: 100%; height: 25px; background: #111; border-radius: var(--border-rad); position: relative; margin-top: 5px; overflow: hidden;}
+    .prog-container { width: 100%; height: 28px; background: #111; border-radius: var(--border-rad); position: relative; margin-top: 8px; overflow: hidden;}
     .prog-bg { position: absolute; inset: 0; }
     .prog-fill { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.85); transition: width 0.1s linear;}
-    .prog-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-50%); z-index: 2;}
-    .prog-marker-time { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 2px 4px; border-radius: 2px; font-size: 0.7rem; font-weight: bold; margin-bottom: 2px; white-space: nowrap;}
+    .prog-marker { position: absolute; top: 0; bottom: 0; width: 3px; background: #fff; transform: translateX(-50%); z-index: 2;}
+    .prog-marker-time { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px; white-space: nowrap;}
 
     /* Quick Controls Symmetrical & Uniform */
-    .quick-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; gap: 5px; flex-wrap: nowrap; width: 100%;}
+    .quick-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; gap: 6px; flex-wrap: nowrap; width: 100%;}
     .qc-item {
-        flex: 1; height: 36px; background: #111; border: 1px solid #444; color: #fff; 
-        padding: 0; font-size: 0.95rem; border-radius: var(--border-rad); cursor: pointer; 
+        flex: 1; height: 40px; background: #2a2a2a; border: 1px solid var(--border-color); color: #fff; 
+        padding: 0; font-size: 1rem; border-radius: var(--border-rad); cursor: pointer; 
         display: flex; align-items: center; justify-content: center; text-align: center;
-        min-width: 0;
+        font-weight: bold; min-width: 0;
     }
     select.qc-item { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-    .qc-item:hover { background: #333; }
-    .qc-btn-play { color: var(--accent-green); font-size: 1.1rem; }
-    .qc-btn-pause { color: var(--accent-red); font-size: 1.1rem; }
+    .qc-item:hover { background: #3a3a3a; border-color: #555;}
+    .qc-btn-play { color: var(--accent-green); font-size: 1.2rem; }
+    .qc-btn-pause { color: var(--accent-red); font-size: 1.2rem; }
 
-    .client-list { font-size: 0.85rem; color: #aaa; border-top: 1px solid #333; padding-top: 10px; margin-top: 10px; flex: 1; overflow-y: auto;}
+    .client-list { font-size: 0.9rem; color: #aaa; border-top: 1px solid #333; padding-top: 15px; margin-top: 15px; flex: 1; overflow-y: auto;}
 
     /* === Middle Panel (Timers) 3/6 === */
-    #panel-mid { width: 50%; min-width: 350px; }
-    .timer-item { background: #222222; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-radius: var(--border-rad); border: 1px solid #333; transition: 0.2s; margin-bottom: 5px;}
-    .timer-item.active-running { border: 1px solid #666; background: #2a2a2a; }
+    #panel-mid { width: 50%; min-width: 400px; }
+    .timer-item { background: #262626; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; border-radius: var(--border-rad); border: 1px solid var(--border-color); transition: 0.2s; margin-bottom: 8px;}
+    .timer-item.active-running { border: 1px solid #666; background: #333333; box-shadow: 0 0 10px rgba(0,0,0,0.5);}
     
-    .t-name { font-size: 1rem; background: transparent; color: #fff; border: none; outline: none; width: 100%; padding: 4px; border-bottom: 1px solid transparent; transition: 0.2s;}
-    .t-name:focus { border-bottom: 1px solid #555; }
+    .t-name { font-size: 1.05rem; background: transparent; color: #fff; border: none; outline: none; width: 100%; padding: 4px; border-bottom: 1px solid transparent; transition: 0.2s; font-weight: 500;}
+    .t-name:focus { border-bottom: 1px solid #666; }
     
-    .t-time-display { font-family: 'Digital-7 Mono', monospace; font-size: 1.8rem; color: var(--accent-green); cursor: pointer; padding: 0 10px; min-width: 80px; text-align: center; transition: 0.2s;}
+    .t-time-display { font-family: 'Digital-7 Mono', monospace; font-size: 2rem; color: var(--accent-green); cursor: pointer; padding: 0 12px; min-width: 90px; text-align: center; transition: 0.2s;}
     .t-time-display:hover { color: #fff; }
     
     .t-actions { display: flex; gap: 8px; align-items: center;}
 
     /* Timer Settings Modal Elements */
-    .ts-row-modal { display: flex; align-items: center; gap: 10px; justify-content: space-between; margin-bottom: 12px;}
-    .ts-row-modal input[type="number"] { width: 60px; text-align: center; }
+    .ts-row-modal { display: flex; align-items: center; gap: 10px; justify-content: space-between; margin-bottom: 15px;}
+    .ts-row-modal input[type="number"] { width: 65px; text-align: center; font-size: 1.1rem; }
 
     /* === Right Panel (Messages) 2/6 === */
-    #panel-right { width: 33.33%; min-width: 300px; }
-    .msg-item { background: #222222; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-radius: var(--border-rad); border: 1px solid #333; margin-bottom: 5px;}
-    .msg-input { width: 100%; resize: vertical; min-height: 40px; font-size: 0.95rem; color: #fff; padding: 0; background: transparent; border: none; outline: none; border-bottom: 1px solid transparent;}
-    .msg-input:focus { border-bottom: 1px solid #555; }
+    #panel-right { width: 33.33%; min-width: 320px; }
+    .msg-item { background: #262626; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-radius: var(--border-rad); border: 1px solid var(--border-color); margin-bottom: 8px;}
+    .msg-input { width: 100%; resize: vertical; min-height: 45px; font-size: 1rem; color: #fff; padding: 0; background: transparent; border: none; outline: none; border-bottom: 1px solid transparent;}
+    .msg-input:focus { border-bottom: 1px solid #666; }
     
     .msg-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px;}
-    .msg-styles { display: flex; gap: 4px; align-items: center; }
-    .style-btn { width: 24px; height: 24px; background: #111; border: 1px solid transparent; color: #aaa; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border-radius: 4px;}
-    .style-btn.on { background: #333; color: #fff; border-color: #555; }
-    .color-btn { width: 16px; height: 16px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+    .msg-styles { display: flex; gap: 5px; align-items: center; }
+    .style-btn { width: 28px; height: 28px; background: #1a1a1a; border: 1px solid transparent; color: #aaa; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border-radius: 4px; font-weight: bold;}
+    .style-btn.on { background: #333; color: #fff; border-color: #666; }
+    .color-btn { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
     .color-btn[data-c="white"] { background: #ffffff; }
     .color-btn[data-c="green"] { background: var(--accent-green); }
     .color-btn[data-c="red"] { background: var(--accent-red); }
     .color-btn.selected { border-color: #888; transform: scale(1.2); }
     
-    .msg-controls { display: flex; gap: 5px; align-items: center; }
-    .msg-mode-select { background: #111; border: 1px solid #333; color: #fff; padding: 3px 6px; font-size: 0.75rem; border-radius: var(--border-rad); width: auto;}
-    .btn-show { border-color: #444; color: #aaa; padding: 3px 12px; font-size: 0.8rem; font-weight: bold;}
-    .btn-show.showing { border-color: var(--accent-red); color: var(--accent-red); }
+    .msg-controls { display: flex; gap: 8px; align-items: center; }
+    .msg-mode-select { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 4px 8px; font-size: 0.85rem; border-radius: var(--border-rad); width: auto;}
+    .btn-show { border-color: #555; color: #ccc; padding: 4px 15px; font-size: 0.85rem; font-weight: bold;}
+    .btn-show.showing { border-color: var(--accent-red); color: var(--accent-red); background: rgba(255,59,48,0.1); }
 
-    .add-block-btn { width: 100%; border: 1px dashed #444; color: #888; padding: 10px; background: transparent; font-size: 0.9rem; border-radius: var(--border-rad); transition: 0.2s; margin-top: 5px;}
-    .add-block-btn:hover { border-color: #fff; color: #fff; background: #111; }
+    .add-block-btn { width: 100%; border: 2px dashed #444; color: #888; padding: 12px; background: #1a1a1a; font-size: 0.95rem; border-radius: var(--border-rad); transition: 0.2s; margin-top: 5px; font-weight: bold;}
+    .add-block-btn:hover { border-color: var(--text-main); color: var(--text-main); background: #222; }
 
     /* === 4. Slave Display === */
     #slave-view { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: relative; overflow: hidden; }
-    .slave-code-input { position: absolute; z-index: 100; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-    .slave-code-input input { font-size: 2rem; padding: 10px; text-align: center; width: 200px; background: #111; color: var(--text-main); border: 2px solid #333; border-radius: var(--border-rad);}
+    .slave-code-input { position: absolute; z-index: 100; display: flex; flex-direction: column; gap: 15px; align-items: center; }
+    .slave-code-input input { font-size: 2.5rem; padding: 15px; text-align: center; width: 250px; background: #111; color: var(--text-main); border: 2px solid #333; border-radius: var(--border-rad); font-weight: bold;}
     
     #slave-content { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative; }
     .slave-stretch { display: flex; flex-direction: column; align-items: center; justify-content: center; transform-origin: center; width: max-content; }
@@ -211,24 +212,18 @@
     .slave-time.warning-text { color: var(--accent-yellow) !important; }
     .slave-time.danger-text { color: var(--accent-red) !important; }
 
-    .slave-msg-bottom { font-size: 5rem; color: #fff; font-weight: normal; text-align: center; margin-top: 20px; white-space: pre-wrap; line-height: 1.2; display: none; transition: opacity 0.2s;}
-    .slave-msg-fs { position: absolute; inset: 0; background: #000; display: none; align-items: center; justify-content: center; font-size: 10rem; color: #fff; font-weight: normal; text-align: center; z-index: 50; white-space: pre-wrap; line-height: 1.2; padding: 50px; transition: opacity 0.2s;}
+    .slave-msg-bottom { font-size: 5rem; color: #fff; font-weight: bold; text-align: center; margin-top: 20px; white-space: pre-wrap; line-height: 1.2; display: none; transition: opacity 0.2s;}
+    .slave-msg-fs { position: absolute; inset: 0; background: #000; display: none; align-items: center; justify-content: center; font-size: 10rem; color: #fff; font-weight: bold; text-align: center; z-index: 50; white-space: pre-wrap; line-height: 1.2; padding: 50px; transition: opacity 0.2s;}
     
     .slave-prog-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; background: #111; z-index: 60;}
     .slave-prog-bg { position: absolute; inset: 0; }
     .slave-prog-fill { position: absolute; top:0; left:0; bottom:0; background: rgba(0,0,0,0.85); transition: width 0.1s linear; }
 
-    /* Flash Animation Overlay (Pure White Flash, Not Inverted) */
-    #flash-overlay {
-        position: fixed; inset: 0; background-color: #ffffff; z-index: 999999;
-        opacity: 0; pointer-events: none;
-    }
-    body.flash-active #flash-overlay {
-        animation: pureFlash 0.15s 6 alternate ease-in-out;
-    }
-    @keyframes pureFlash {
-        0% { opacity: 0; }
-        100% { opacity: 1; }
+    /* Timer Text Flash Animation (Pure Red) */
+    .flash-red-text { animation: flashRedTextAnim 0.2s 6 alternate ease-in-out; }
+    @keyframes flashRedTextAnim {
+        0% { opacity: 1; }
+        100% { opacity: 0; color: var(--accent-red) !important; text-shadow: 0 0 40px var(--accent-red); }
     }
 
     @media (max-width: 1024px) {
@@ -239,9 +234,6 @@
 </style>
 </head>
 <body>
-    
-    <!-- Flash Overlay to flash the entire screen white -->
-    <div id="flash-overlay"></div>
 
     <!-- Role Selection -->
     <div id="role-screen">
@@ -257,7 +249,7 @@
     <div id="rooms-view">
         <div class="rooms-header">
             <h2 style="color:#fff;">Rooms (<span id="rooms-count">0</span>)</h2>
-            <button class="btn-square btn-create" onclick="openCreateRoomModal()">+ Create Room</button>
+            <button class="btn-square btn-create" style="border-color: var(--accent-green); color: var(--accent-green);" onclick="openCreateRoomModal()">+ Create Room</button>
         </div>
         <div class="rooms-grid" id="rooms-grid"></div>
     </div>
@@ -270,25 +262,25 @@
             <input type="text" id="new-room-code" placeholder="5-Digit Code" maxlength="5">
             <div class="modal-btns">
                 <button class="btn-square" style="border-color:#555; color:#aaa;" onclick="closeModal('create-room-modal')">Cancel</button>
-                <button class="btn-square" style="border-color:var(--accent-green); color:var(--accent-green);" onclick="confirmCreateRoom()">Create</button>
+                <button class="btn-square" style="background:var(--accent-green); color:#000; border:none;" onclick="confirmCreateRoom()">Create</button>
             </div>
         </div>
     </div>
 
     <!-- Modal: Timer Settings -->
     <div class="modal-overlay" id="timer-settings-modal">
-        <div class="modal-box" style="width: 380px;">
+        <div class="modal-box" style="width: 400px;">
             <h3>Timer Settings</h3>
             <div class="ts-row-modal">
-                <label style="color:#fff;">Duration:</label>
+                <label style="color:#ddd; font-weight:600;">Duration:</label>
                 <div>
                     <input type="number" id="ts-m" min="0" placeholder="Min"> :
                     <input type="number" id="ts-s" min="0" max="59" placeholder="Sec">
                 </div>
             </div>
             <div class="ts-row-modal">
-                <label style="color:#fff;">Appearance:</label>
-                <select id="ts-appr" style="width: 140px;">
+                <label style="color:#ddd; font-weight:600;">Appearance:</label>
+                <select id="ts-appr" style="width: 150px;">
                     <option value="cd">Countdown</option>
                     <option value="cu">Count Up</option>
                     <option value="tod">Time of Day</option>
@@ -299,8 +291,8 @@
                 </select>
             </div>
             <div class="ts-row-modal">
-                <label style="color:#fff;">TC Format:</label>
-                <select id="ts-fps" style="width: 140px;">
+                <label style="color:#ddd; font-weight:600;">TC Format:</label>
+                <select id="ts-fps" style="width: 150px;">
                     <option value="24">24 FPS</option>
                     <option value="25">25 FPS</option>
                     <option value="29.97">29.97 DF</option>
@@ -308,22 +300,22 @@
                 </select>
             </div>
             <div class="ts-row-modal">
-                <label style="color:#fff;">🟡 Yellow At:</label>
+                <label style="color:var(--accent-yellow); font-weight:600;">🟡 Yellow At:</label>
                 <div>
                     <input type="number" id="ts-ym" min="0" placeholder="Min"> m
                     <input type="number" id="ts-ys" min="0" max="59" placeholder="Sec"> s
                 </div>
             </div>
             <div class="ts-row-modal">
-                <label style="color:#fff;">🔴 Red At:</label>
+                <label style="color:var(--accent-red); font-weight:600;">🔴 Red At:</label>
                 <div>
                     <input type="number" id="ts-rm" min="0" placeholder="Min"> m
                     <input type="number" id="ts-rs" min="0" max="59" placeholder="Sec"> s
                 </div>
             </div>
             <div class="modal-btns" style="margin-top: 20px;">
-                <button class="btn-square" style="background:#000; color:#fff; border:1px solid #555;" onclick="closeModal('timer-settings-modal')">Cancel</button>
-                <button class="btn-square" style="background:var(--accent-green); color:#fff; border:none;" onclick="saveTimerSettings()">Confirm</button>
+                <button class="btn-square" style="background:#1a1a1a; color:#fff; border:1px solid #555;" onclick="closeModal('timer-settings-modal')">Cancel</button>
+                <button class="btn-square" style="background:var(--accent-green); color:#000; border:none;" onclick="saveTimerSettings()">Confirm</button>
             </div>
         </div>
     </div>
@@ -331,9 +323,9 @@
     <!-- Master: Console Workspace -->
     <div id="console-view">
         <div class="console-header">
-            <button class="btn-square" style="border:none; color:#ccc;" onclick="exitRoom()">← Back</button>
+            <button class="btn-square" style="border:none; color:#ccc; background:transparent;" onclick="exitRoom()">← Back</button>
             <div class="room-info" id="console-room-info">ROOM: UNKNOWN </div>
-            <button class="btn-square" style="border:1px solid #555; color:#888; font-size:0.75rem;" id="global-fs-btn">[ FULLSCREEN ]</button>
+            <button class="btn-square" style="border:1px solid #555; color:#888; font-size:0.8rem; background:transparent;" id="global-fs-btn">[ FULLSCREEN ]</button>
         </div>
         
         <div class="workspace" id="workspace">
@@ -343,6 +335,7 @@
                 <div class="panel-content">
                     <div class="preview-box" id="master-preview-box">
                         <div class="preview-scale-wrapper" id="master-preview-scale">
+                            <!-- 時間字體會套用紅光閃爍 -->
                             <div class="preview-time" id="m-prev-time">00:00</div>
                             <div class="preview-msg" id="m-prev-msg-bot" style="display:none;"></div>
                         </div>
@@ -386,7 +379,7 @@
                     </div>
 
                     <div class="client-list">
-                        <div style="color:#fff; margin-bottom:5px; font-weight:normal;">Connected Displays: <span id="m-client-count">0</span></div>
+                        <div style="color:#eee; margin-bottom:10px; font-weight:bold;">Connected Displays: <span id="m-client-count">0</span></div>
                         <div id="m-client-list"></div>
                     </div>
                 </div>
@@ -399,8 +392,8 @@
                 <div class="panel-header">
                     <span>Timers</span>
                     <div style="display:flex; gap:8px;">
-                        <button class="btn-square" style="border-color:#555; padding:2px 8px; font-size:0.8rem;" onclick="toggleBlackout()"><div class="led" id="led-blackout" style="margin-right:5px;"></div> Blackout</button>
-                        <button class="btn-square" style="border-color:#555; padding:2px 8px; font-size:0.8rem;" onclick="triggerFlash()">Flash</button>
+                        <button class="btn-square" style="border-color:#555; padding:4px 10px; font-size:0.85rem; background:#1a1a1a;" onclick="toggleBlackout()"><div class="led" id="led-blackout" style="margin-right:6px;"></div> Blackout</button>
+                        <button class="btn-square" style="border-color:var(--accent-red); color:var(--accent-red); padding:4px 10px; font-size:0.85rem; background:transparent;" onclick="triggerFlash()">Flash (Red)</button>
                     </div>
                 </div>
                 <div class="panel-content" id="timers-content">
@@ -416,7 +409,7 @@
                 <div class="panel-header">
                     <span>Messages</span>
                     <div style="display:flex; gap:8px;">
-                        <button class="btn-square" style="border-color:#555; padding:2px 8px; font-size:0.8rem;" onclick="triggerFlash()">Flash</button>
+                        <button class="btn-square" style="border-color:var(--accent-red); color:var(--accent-red); padding:4px 10px; font-size:0.85rem; background:transparent;" onclick="triggerFlash()">Flash (Red)</button>
                     </div>
                 </div>
                 <div class="panel-content" id="messages-content">
@@ -430,12 +423,13 @@
     <!-- Slave View -->
     <div id="slave-view">
         <div class="slave-code-input" id="slave-login">
-            <h2 style="color:#fff; font-weight:normal;">ENTER ROOM CODE</h2>
+            <h2 style="color:#fff; font-weight:800; font-size:3rem; margin:0;">ENTER ROOM CODE</h2>
             <input type="text" id="slave-room-code" maxlength="5" placeholder="12345">
-            <button class="btn-square btn-open" onclick="slaveConnect()">CONNECT</button>
+            <button class="btn-square" style="background:var(--accent-green); color:#000; font-size:1.5rem; padding:10px 30px; font-weight:bold; border:none;" onclick="slaveConnect()">CONNECT</button>
         </div>
         <div id="slave-content">
             <div class="slave-stretch" id="slave-stretch">
+                <!-- 時間字體會套用紅光閃爍 -->
                 <div class="slave-time" id="s-time">00:00</div>
                 <div class="slave-msg-bottom" id="s-msg-bot"></div>
             </div>
@@ -466,6 +460,7 @@
 
     let sysBlackout = false;
     let lastFlashTs = 0;
+    let timeUpFlashed = false; // 新增：判斷時間到是否已經閃過
 
     let rooms = [];
     let currentRoom = null;
@@ -484,7 +479,7 @@
         
         if (isMaster) {
             document.getElementById('rooms-view').style.display = 'flex';
-            loadRooms(); renderRooms(); setupResizers(); updateQcText();
+            loadRooms(); renderRooms(); setupResizers(); syncQcStep('l');
         } else {
             document.getElementById('slave-view').style.display = 'flex';
         }
@@ -495,11 +490,11 @@
     }
 
     function loadRooms() {
-        // Updated to v7 to ensure clean room creation testing
-        let saved = localStorage.getItem('matc_rooms_v7');
+        // 更新至 v8，確保清除舊的快取，讓預設計時器正確生成
+        let saved = localStorage.getItem('matc_rooms_v8');
         if (saved) { try { rooms = JSON.parse(saved); } catch(e) { rooms = []; } }
     }
-    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v7', JSON.stringify(rooms)); }
+    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v8', JSON.stringify(rooms)); }
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 4); }
 
     function openCreateRoomModal() {
@@ -514,7 +509,7 @@
         let code = document.getElementById('new-room-code').value.trim();
         if(code.length !== 5) return;
         
-        // 預設的三個計時器 Timer 1-3 (10m, 15m, 30m) 且黃燈皆為 5m, 紅燈皆為 3m
+        // 預設三個計時器
         let newRoom = { 
             id: generateId(), 
             name: name, 
@@ -546,9 +541,9 @@
                     <span>Timers: ${r.timers.length} | Msgs: ${r.messages.length}</span>
                 </div>
                 <div class="room-actions">
-                    <button class="btn-square btn-open" onclick="openRoom('${r.id}')">OPEN</button>
+                    <button class="btn-square btn-open" style="background:var(--accent-green); color:#000; border:none;" onclick="openRoom('${r.id}')">OPEN</button>
                     <div class="dropdown">
-                        <button class="btn-square" onclick="toggleDropdown('rmenu-${r.id}')">⋮</button>
+                        <button class="btn-square" style="border:none;" onclick="toggleDropdown('rmenu-${r.id}')">⋮</button>
                         <div class="dropdown-menu" id="rmenu-${r.id}">
                             <button onclick="pinRoom('${r.id}')">${r.isPinned ? 'Unpin' : 'Pin to top'}</button>
                             <button onclick="dupRoom('${r.id}')">Clone</button>
@@ -592,13 +587,21 @@
         connectedClients = {}; renderClientList();
 
         mqttClient.unsubscribe(/.*/);
-        mqttClient.subscribe(`matc/v7/room_${activeRoomCode}/heartbeat`);
+        mqttClient.subscribe(`matc/v8/room_${activeRoomCode}/heartbeat`);
         
-        cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; activeTimerIndex = -1; activeMessageId = null;
         sysBlackout = false; document.getElementById('led-blackout').className = 'led';
         currentRoom.messages.forEach(m => m.show = false);
+        activeMessageId = null;
 
-        renderTimers(); renderMessages(); updatePlayPauseBtn(); broadcastState();
+        // 【新修改】一進房若有計時器，直接載入第一個預設計時器，但不啟動播放
+        if (currentRoom.timers.length > 0) {
+            setTimer(0);
+        } else {
+            cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; activeTimerIndex = -1;
+            renderTimers(); updatePlayPauseBtn(); broadcastState();
+        }
+
+        renderMessages();
         if(!window.masterLoop) window.masterLoop = setInterval(broadcastState, 1000);
     }
 
@@ -615,10 +618,21 @@
     function triggerFlash() { lastFlashTs = Date.now(); broadcastState(); playFlashAnimation(); }
 
     function playFlashAnimation() {
-        // 透過 body 加上 flash-active 來呼叫最上層的閃白動畫
-        document.body.classList.remove('flash-active');
-        void document.body.offsetWidth; // force reflow
-        document.body.classList.add('flash-active');
+        // 只針對計時器文字套用紅光閃爍動畫
+        let mTime = document.getElementById('m-prev-time');
+        let sTime = document.getElementById('s-time');
+        
+        if (mTime) {
+            mTime.classList.remove('flash-red-text');
+            void mTime.offsetWidth; // force reflow
+            mTime.classList.add('flash-red-text');
+        }
+        
+        if (sTime && activeRoomCode) {
+            sTime.classList.remove('flash-red-text');
+            void sTime.offsetWidth; // force reflow
+            sTime.classList.add('flash-red-text');
+        }
     }
 
     function renderTimers() {
@@ -629,19 +643,18 @@
             let div = document.createElement('div');
             div.className = 'timer-item' + (isActive ? ' active-running' : '');
             
-            // Format HH:MM:SS or MM:SS
             let durStr = pad(t.m) + ":" + pad(t.s);
             if (t.h > 0) durStr = t.h + ":" + durStr;
 
             div.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px; flex:1;">
-                    <span style="color:#777; font-weight:bold; font-size:1.1rem; width:25px;">#${i+1}</span>
+                    <span style="color:#666; font-weight:bold; font-size:1.1rem; width:25px;">#${i+1}</span>
                     <div class="t-time-display" onclick="openTimerSettings('${t.id}')">${durStr}</div>
                     <input type="text" class="t-name" id="t-name-${t.id}" value="${t.name}" placeholder="Timer Name" onchange="updateTimerData('${t.id}')">
                 </div>
                 <div class="t-actions">
                     <button class="btn-square btn-set" style="border-color:#555;" onclick="setTimer(${i})">SET</button>
-                    <button class="btn-square btn-go" style="border-color:var(--accent-green); color:var(--accent-green);" onclick="goTimer(${i})">GO</button>
+                    <button class="btn-square btn-go" style="border-color:var(--accent-green); color:var(--accent-green); background:transparent;" onclick="goTimer(${i})">GO</button>
                     <div class="dropdown">
                         <button class="btn-square" style="border:none; padding:4px 8px;" onclick="toggleDropdown('tmenu-${t.id}')">⋮</button>
                         <div class="dropdown-menu" id="tmenu-${t.id}" style="right:0; width:80px;">
@@ -656,7 +669,6 @@
     }
 
     function addTimer() { 
-        // 預設值加入黃燈 5m、紅燈 3m
         currentRoom.timers.push({ 
             id: generateId(), 
             name: `Timer ${currentRoom.timers.length + 1}`, 
@@ -700,6 +712,7 @@
         let t = currentRoom.timers[idx];
         cdRemainingMs = (t.h * 3600 + t.m * 60 + t.s) * 1000;
         cdTotalMs = cdRemainingMs; cdIsRunning = false;
+        timeUpFlashed = false; // 重設閃爍鎖
         renderTimers(); updatePlayPauseBtn(); broadcastState();
     }
 
@@ -707,6 +720,7 @@
         setTimer(idx);
         if(cdRemainingMs > 0 || currentRoom.timers[idx].appr !== 'cd') { 
             cdTargetTime = Date.now() + cdRemainingMs; cdIsRunning = true;
+            timeUpFlashed = false; // 重設閃爍鎖
             updatePlayPauseBtn(); broadcastState();
         }
     }
@@ -812,7 +826,7 @@
         let msgObj = null;
         if(activeMessageId) {
             let m = currentRoom.messages.find(x=>x.id===activeMessageId);
-            if(m && m.show) msgObj = { text: m.text, color: m.c==='green'?'#00cc00':(m.c==='red'?'#ff3333':'#ffffff'), bold: m.b, caps: m.cap, mode: m.mode };
+            if(m && m.show) msgObj = { text: m.text, color: m.c==='green'?'var(--accent-green)':(m.c==='red'?'var(--accent-red)':'#ffffff'), bold: m.b, caps: m.cap, mode: m.mode };
         }
 
         let yMs = 0, rMs = 0, appr = 'cd', fps = 24, df = false;
@@ -829,7 +843,7 @@
             appr: appr, fps: fps, df: df,
             blk: sysBlackout, fTs: lastFlashTs
         });
-        mqttClient.publish(`matc/v7/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
+        mqttClient.publish(`matc/v8/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
     }
 
     function slaveConnect() {
@@ -839,9 +853,9 @@
         document.getElementById('slave-login').style.display = 'none';
         document.getElementById('slave-content').style.display = 'flex';
         
-        mqttClient.subscribe(`matc/v7/room_${activeRoomCode}/state`);
+        mqttClient.subscribe(`matc/v8/room_${activeRoomCode}/state`);
         if(heartbeatInt) clearInterval(heartbeatInt);
-        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v7/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
+        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v8/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
     }
 
     let lastState = null;
@@ -879,6 +893,13 @@
         if (cdIsRunning) ms = cdTargetTime - now; 
         if (ms < 0 && !cdIsRunning) ms = cdRemainingMs; 
 
+        // 自動觸發閃爍邏輯 (當倒數碰到 0 時)
+        if (ms > 0) { timeUpFlashed = false; }
+        if (cdIsRunning && ms <= 0 && cdTotalMs > 0 && !timeUpFlashed) {
+            timeUpFlashed = true;
+            playFlashAnimation();
+        }
+
         let yMs = 0, rMs = 0, msg = null, appr = 'cd', fps = 24, df = false, blk = false;
         if (isMaster && currentRoom) {
             if(activeTimerIndex >= 0 && currentRoom.timers[activeTimerIndex]) {
@@ -888,7 +909,7 @@
             }
             if(activeMessageId) {
                 let m = currentRoom.messages.find(x=>x.id===activeMessageId);
-                if(m && m.show) msg = { text: m.text, color: m.c==='green'?'#00cc00':(m.c==='red'?'#ff3333':'#ffffff'), bold: m.b, caps: m.cap, mode: m.mode };
+                if(m && m.show) msg = { text: m.text, color: m.c==='green'?'var(--accent-green)':(m.c==='red'?'var(--accent-red)':'#ffffff'), bold: m.b, caps: m.cap, mode: m.mode };
             }
             blk = sysBlackout;
         } else if (!isMaster && lastState) {
