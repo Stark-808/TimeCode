@@ -137,12 +137,9 @@
     .preview-msg { font-size: 1rem; color: #fff; font-weight: bold; text-align: center; margin-top: 5px; transition: opacity 0.2s; }
     .preview-msg.msg-fullscreen { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; z-index: 5; }
     
-    /* Segmented Progress Bar (Left to Right Depletion) */
-    .prog-container { width: 100%; height: 28px; background: #111; border-radius: var(--border-rad); position: relative; margin-top: 8px; overflow: hidden;}
-    .prog-bg { position: absolute; inset: 0; }
-    .prog-fill { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.85); transition: width 0.1s linear;}
-    .prog-marker { position: absolute; top: 0; bottom: 0; width: 3px; background: #fff; transform: translateX(-50%); z-index: 2;}
-    .prog-marker-time { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; font-weight: bold; margin-bottom: 2px; white-space: nowrap;}
+    /* Stagetimer Style Progress Bar */
+    .prog-container { width: 100%; height: 30px; background: #222222; border-radius: 8px; position: relative; margin-top: 12px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);}
+    .prog-fill { position: absolute; top: 0; bottom: 0; right: 0; /* Anchor to right for left-to-right depletion */ background: var(--accent-green); transition: width 0.1s linear, background-color 0.3s ease; }
 
     /* Quick Controls Symmetrical & Uniform */
     .quick-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; gap: 6px; flex-wrap: nowrap; width: 100%;}
@@ -209,15 +206,12 @@
     .slave-stretch { display: flex; flex-direction: column; align-items: center; justify-content: center; transform-origin: center; width: max-content; }
     
     .slave-time { font-family: 'Digital-7 Mono', monospace; font-size: 25rem; color: var(--accent-green); line-height: 0.9; white-space: pre-wrap; transition: color 0.3s; text-align: center; text-shadow: none !important; letter-spacing: -5px;}
-    .slave-time.warning-text { color: var(--accent-yellow) !important; }
-    .slave-time.danger-text { color: var(--accent-red) !important; }
 
     .slave-msg-bottom { font-size: 5rem; color: #fff; font-weight: bold; text-align: center; margin-top: 20px; white-space: pre-wrap; line-height: 1.2; display: none; transition: opacity 0.2s;}
     .slave-msg-fs { position: absolute; inset: 0; background: #000; display: none; align-items: center; justify-content: center; font-size: 10rem; color: #fff; font-weight: bold; text-align: center; z-index: 50; white-space: pre-wrap; line-height: 1.2; padding: 50px; transition: opacity 0.2s;}
     
-    .slave-prog-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; background: #111; z-index: 60;}
-    .slave-prog-bg { position: absolute; inset: 0; }
-    .slave-prog-fill { position: absolute; top:0; left:0; bottom:0; background: rgba(0,0,0,0.85); transition: width 0.1s linear; }
+    .slave-prog-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 50px; background: #1a1a1a; z-index: 60;}
+    .slave-prog-fill { position: absolute; top:0; right:0; bottom:0; background: var(--accent-green); transition: width 0.1s linear, background-color 0.3s ease; }
 
     /* Timer Text Flash Animation (Pure Red) */
     .flash-red-text { animation: flashRedTextAnim 0.2s 6 alternate ease-in-out; }
@@ -343,11 +337,7 @@
                     </div>
                     
                     <div class="prog-container" id="m-prog-container">
-                        <div class="prog-bg" id="m-prog-bg"></div>
                         <div class="prog-fill" id="m-prog-fill"></div>
-                        <div class="prog-marker" id="m-prog-marker" style="display:none;">
-                            <div class="prog-marker-time" id="m-prog-marker-time">00:00</div>
-                        </div>
                     </div>
                     
                     <div class="quick-controls">
@@ -435,7 +425,6 @@
             </div>
             <div class="slave-msg-fs" id="s-msg-fs"></div>
             <div class="slave-prog-container">
-                <div class="slave-prog-bg" id="s-prog-bg"></div>
                 <div class="slave-prog-fill" id="s-prog-fill"></div>
             </div>
         </div>
@@ -460,7 +449,7 @@
 
     let sysBlackout = false;
     let lastFlashTs = 0;
-    let timeUpFlashed = false; // 新增：判斷時間到是否已經閃過
+    let timeUpFlashed = false; 
 
     let rooms = [];
     let currentRoom = null;
@@ -490,11 +479,11 @@
     }
 
     function loadRooms() {
-        // 更新至 v8，確保清除舊的快取，讓預設計時器正確生成
-        let saved = localStorage.getItem('matc_rooms_v8');
+        // v9 version to ensure clean layout
+        let saved = localStorage.getItem('matc_rooms_v9');
         if (saved) { try { rooms = JSON.parse(saved); } catch(e) { rooms = []; } }
     }
-    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v8', JSON.stringify(rooms)); }
+    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v9', JSON.stringify(rooms)); }
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 4); }
 
     function openCreateRoomModal() {
@@ -587,13 +576,13 @@
         connectedClients = {}; renderClientList();
 
         mqttClient.unsubscribe(/.*/);
-        mqttClient.subscribe(`matc/v8/room_${activeRoomCode}/heartbeat`);
+        mqttClient.subscribe(`matc/v9/room_${activeRoomCode}/heartbeat`);
         
         sysBlackout = false; document.getElementById('led-blackout').className = 'led';
         currentRoom.messages.forEach(m => m.show = false);
         activeMessageId = null;
 
-        // 【新修改】一進房若有計時器，直接載入第一個預設計時器，但不啟動播放
+        // 預設載入第一個
         if (currentRoom.timers.length > 0) {
             setTimer(0);
         } else {
@@ -618,19 +607,18 @@
     function triggerFlash() { lastFlashTs = Date.now(); broadcastState(); playFlashAnimation(); }
 
     function playFlashAnimation() {
-        // 只針對計時器文字套用紅光閃爍動畫
         let mTime = document.getElementById('m-prev-time');
         let sTime = document.getElementById('s-time');
         
         if (mTime) {
             mTime.classList.remove('flash-red-text');
-            void mTime.offsetWidth; // force reflow
+            void mTime.offsetWidth; 
             mTime.classList.add('flash-red-text');
         }
         
         if (sTime && activeRoomCode) {
             sTime.classList.remove('flash-red-text');
-            void sTime.offsetWidth; // force reflow
+            void sTime.offsetWidth; 
             sTime.classList.add('flash-red-text');
         }
     }
@@ -712,7 +700,7 @@
         let t = currentRoom.timers[idx];
         cdRemainingMs = (t.h * 3600 + t.m * 60 + t.s) * 1000;
         cdTotalMs = cdRemainingMs; cdIsRunning = false;
-        timeUpFlashed = false; // 重設閃爍鎖
+        timeUpFlashed = false; 
         renderTimers(); updatePlayPauseBtn(); broadcastState();
     }
 
@@ -720,7 +708,7 @@
         setTimer(idx);
         if(cdRemainingMs > 0 || currentRoom.timers[idx].appr !== 'cd') { 
             cdTargetTime = Date.now() + cdRemainingMs; cdIsRunning = true;
-            timeUpFlashed = false; // 重設閃爍鎖
+            timeUpFlashed = false; 
             updatePlayPauseBtn(); broadcastState();
         }
     }
@@ -843,7 +831,7 @@
             appr: appr, fps: fps, df: df,
             blk: sysBlackout, fTs: lastFlashTs
         });
-        mqttClient.publish(`matc/v8/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
+        mqttClient.publish(`matc/v9/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
     }
 
     function slaveConnect() {
@@ -853,9 +841,9 @@
         document.getElementById('slave-login').style.display = 'none';
         document.getElementById('slave-content').style.display = 'flex';
         
-        mqttClient.subscribe(`matc/v8/room_${activeRoomCode}/state`);
+        mqttClient.subscribe(`matc/v9/room_${activeRoomCode}/state`);
         if(heartbeatInt) clearInterval(heartbeatInt);
-        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v8/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
+        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v9/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
     }
 
     let lastState = null;
@@ -893,7 +881,6 @@
         if (cdIsRunning) ms = cdTargetTime - now; 
         if (ms < 0 && !cdIsRunning) ms = cdRemainingMs; 
 
-        // 自動觸發閃爍邏輯 (當倒數碰到 0 時)
         if (ms > 0) { timeUpFlashed = false; }
         if (cdIsRunning && ms <= 0 && cdTotalMs > 0 && !timeUpFlashed) {
             timeUpFlashed = true;
@@ -921,14 +908,11 @@
 
         if(isMaster && currentRoom) {
             let mTime = document.getElementById('m-prev-time');
-            let mProgBg = document.getElementById('m-prog-bg');
             let mProgFill = document.getElementById('m-prog-fill');
-            let mProgMarker = document.getElementById('m-prog-marker');
-            let mProgMarkerTime = document.getElementById('m-prog-marker-time');
             let mMsgBot = document.getElementById('m-prev-msg-bot');
             let mMsgFs = document.getElementById('m-prev-msg-fs');
 
-            applyStyleAndProgress(ms, cdTotalMs, yMs, rMs, mTime, mProgBg, mProgFill, mProgMarker, mProgMarkerTime, timeStr);
+            applyStyleAndProgress(ms, cdTotalMs, yMs, rMs, mTime, mProgFill, timeStr);
             applyMessageUI(msg, mTime, mMsgBot, mMsgFs);
             document.getElementById('master-preview-box').style.opacity = blk ? '0' : '1';
             applyPreviewScale();
@@ -936,12 +920,11 @@
 
         if(!isMaster && activeRoomCode) {
             let sTime = document.getElementById('s-time');
-            let sProgBg = document.getElementById('s-prog-bg');
             let sProgFill = document.getElementById('s-prog-fill');
             let sMsgBot = document.getElementById('s-msg-bot');
             let sMsgFs = document.getElementById('s-msg-fs');
 
-            applyStyleAndProgress(ms, cdTotalMs, yMs, rMs, sTime, sProgBg, sProgFill, null, null, timeStr);
+            applyStyleAndProgress(ms, cdTotalMs, yMs, rMs, sTime, sProgFill, timeStr);
             applyMessageUI(msg, sTime, sMsgBot, sMsgFs);
             document.getElementById('slave-content').style.opacity = blk ? '0' : '1';
             applySlaveScale();
@@ -999,39 +982,28 @@
         }
     }
 
-    function applyStyleAndProgress(ms, tot, yMs, rMs, timeEl, bgEl, fillEl, markerEl, markerTimeEl, textStr) {
+    function applyStyleAndProgress(ms, tot, yMs, rMs, timeEl, fillEl, textStr) {
         timeEl.innerHTML = textStr;
         
         let pct = 0;
         if(tot > 0 && ms > 0) pct = (ms / tot) * 100;
         if(pct > 100) pct = 100;
         
-        let yPct = 0, rPct = 0;
-        if(tot > 0) { yPct = (yMs / tot) * 100; rPct = (rMs / tot) * 100; }
-        
-        bgEl.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${100-yPct}%, var(--accent-yellow) ${100-yPct}%, var(--accent-yellow) ${100-rPct}%, var(--accent-red) ${100-rPct}%, var(--accent-red) 100%)`;
-        
-        let maskWidth = 100 - pct;
-        fillEl.style.width = maskWidth + '%';
-        
-        if (markerEl && markerTimeEl) {
-            if (tot === 0) { markerEl.style.display = 'none'; }
-            else {
-                markerEl.style.display = 'block';
-                markerEl.style.left = maskWidth + '%';
-                let tSec = Math.ceil(Math.abs(ms) / 1000);
-                markerTimeEl.textContent = `${pad(Math.floor(tSec/60))}:${pad(tSec%60)}`;
-            }
+        // Stagetimer Style: 靠右對齊 (right: 0)，寬度百分比隨時間縮減，達成「由左至右」消耗的效果。
+        fillEl.style.width = pct + '%';
+
+        // Stagetimer Style: 顏色全域連動變換
+        let currentColor = 'var(--accent-green)';
+        if (ms === 0 && tot === 0 && !cdIsRunning) {
+            currentColor = 'var(--accent-green)';
+        } else if (ms <= rMs) {
+            currentColor = 'var(--accent-red)';
+        } else if (ms <= yMs) {
+            currentColor = 'var(--accent-yellow)';
         }
 
-        if (ms === 0 && tot === 0 && !cdIsRunning) {
-            timeEl.style.color = 'var(--accent-green)';
-            return;
-        }
-        let isOvertime = ms <= 0;
-        if (ms <= rMs) timeEl.style.color = 'var(--accent-red)';
-        else if (ms <= yMs) timeEl.style.color = 'var(--accent-yellow)';
-        else timeEl.style.color = 'var(--accent-green)';
+        fillEl.style.backgroundColor = currentColor;
+        timeEl.style.color = currentColor;
     }
 
     function applyMessageUI(msg, timeEl, msgBot, msgFs) {
