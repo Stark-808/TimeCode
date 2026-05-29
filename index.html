@@ -199,13 +199,6 @@
     .add-block-btn { width: 100%; border: 1px dashed #444; color: #888; padding: 10px; background: transparent; font-size: 0.9rem; border-radius: var(--border-rad); transition: 0.2s; margin-top: 5px;}
     .add-block-btn:hover { border-color: #fff; color: #fff; background: #111; }
 
-    /* Flash Animation scoped to specific elements */
-    .flash-alert { animation: flashAlertAnim 0.15s 6 alternate ease-in-out; }
-    @keyframes flashAlertAnim {
-        0% { filter: invert(0); }
-        100% { filter: invert(1); }
-    }
-
     /* === 4. Slave Display === */
     #slave-view { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: relative; overflow: hidden; }
     .slave-code-input { position: absolute; z-index: 100; display: flex; flex-direction: column; gap: 10px; align-items: center; }
@@ -225,6 +218,19 @@
     .slave-prog-bg { position: absolute; inset: 0; }
     .slave-prog-fill { position: absolute; top:0; left:0; bottom:0; background: rgba(0,0,0,0.85); transition: width 0.1s linear; }
 
+    /* Flash Animation Overlay (Pure White Flash, Not Inverted) */
+    #flash-overlay {
+        position: fixed; inset: 0; background-color: #ffffff; z-index: 999999;
+        opacity: 0; pointer-events: none;
+    }
+    body.flash-active #flash-overlay {
+        animation: pureFlash 0.15s 6 alternate ease-in-out;
+    }
+    @keyframes pureFlash {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
+    }
+
     @media (max-width: 1024px) {
         .workspace { flex-direction: column; overflow-y: auto; }
         .resizer { display: none; }
@@ -233,6 +239,9 @@
 </style>
 </head>
 <body>
+    
+    <!-- Flash Overlay to flash the entire screen white -->
+    <div id="flash-overlay"></div>
 
     <!-- Role Selection -->
     <div id="role-screen">
@@ -486,10 +495,11 @@
     }
 
     function loadRooms() {
-        let saved = localStorage.getItem('matc_rooms_v6');
+        // Updated to v7 to ensure clean room creation testing
+        let saved = localStorage.getItem('matc_rooms_v7');
         if (saved) { try { rooms = JSON.parse(saved); } catch(e) { rooms = []; } }
     }
-    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v6', JSON.stringify(rooms)); }
+    function saveRooms() { if(isMaster) localStorage.setItem('matc_rooms_v7', JSON.stringify(rooms)); }
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 4); }
 
     function openCreateRoomModal() {
@@ -504,7 +514,19 @@
         let code = document.getElementById('new-room-code').value.trim();
         if(code.length !== 5) return;
         
-        let newRoom = { id: generateId(), name: name, code: code, isPinned: false, timers: [], messages: [] };
+        // 預設的三個計時器 Timer 1-3 (10m, 15m, 30m) 且黃燈皆為 5m, 紅燈皆為 3m
+        let newRoom = { 
+            id: generateId(), 
+            name: name, 
+            code: code, 
+            isPinned: false, 
+            timers: [
+                { id: generateId(), name: 'Timer 1', h: 0, m: 10, s: 0, ym: 5, ys: 0, rm: 3, rs: 0, appr: 'cd', fps: 24, df: false },
+                { id: generateId(), name: 'Timer 2', h: 0, m: 15, s: 0, ym: 5, ys: 0, rm: 3, rs: 0, appr: 'cd', fps: 24, df: false },
+                { id: generateId(), name: 'Timer 3', h: 0, m: 30, s: 0, ym: 5, ys: 0, rm: 3, rs: 0, appr: 'cd', fps: 24, df: false }
+            ], 
+            messages: [] 
+        };
         rooms.push(newRoom); saveRooms(); renderRooms(); closeModal('create-room-modal');
     }
 
@@ -570,7 +592,7 @@
         connectedClients = {}; renderClientList();
 
         mqttClient.unsubscribe(/.*/);
-        mqttClient.subscribe(`matc/v6/room_${activeRoomCode}/heartbeat`);
+        mqttClient.subscribe(`matc/v7/room_${activeRoomCode}/heartbeat`);
         
         cdIsRunning = false; cdRemainingMs = 0; cdTotalMs = 0; activeTimerIndex = -1; activeMessageId = null;
         sysBlackout = false; document.getElementById('led-blackout').className = 'led';
@@ -593,20 +615,10 @@
     function triggerFlash() { lastFlashTs = Date.now(); broadcastState(); playFlashAnimation(); }
 
     function playFlashAnimation() {
-        let pBox = document.getElementById('master-preview-box');
-        let sView = document.getElementById('slave-view');
-        
-        if (pBox) {
-            pBox.classList.remove('flash-alert');
-            void pBox.offsetWidth; // force reflow
-            pBox.classList.add('flash-alert');
-        }
-        
-        if (sView && activeRoomCode) {
-            sView.classList.remove('flash-alert');
-            void sView.offsetWidth; // force reflow
-            sView.classList.add('flash-alert');
-        }
+        // 透過 body 加上 flash-active 來呼叫最上層的閃白動畫
+        document.body.classList.remove('flash-active');
+        void document.body.offsetWidth; // force reflow
+        document.body.classList.add('flash-active');
     }
 
     function renderTimers() {
@@ -643,7 +655,16 @@
         });
     }
 
-    function addTimer() { currentRoom.timers.push({ id: generateId(), name: '', h: 0, m: 15, s: 0, ym: 5, ys: 0, rm: 1, rs: 0, appr: 'cd', fps: 24, df: false }); saveRooms(); renderTimers(); }
+    function addTimer() { 
+        // 預設值加入黃燈 5m、紅燈 3m
+        currentRoom.timers.push({ 
+            id: generateId(), 
+            name: `Timer ${currentRoom.timers.length + 1}`, 
+            h: 0, m: 15, s: 0, ym: 5, ys: 0, rm: 3, rs: 0, appr: 'cd', fps: 24, df: false 
+        }); 
+        saveRooms(); renderTimers(); 
+    }
+    
     function updateTimerData(id) { let t = currentRoom.timers.find(x=>x.id===id); if(t) { t.name = document.getElementById('t-name-'+id).value; saveRooms(); } }
     function cloneTimer(id) { let t = currentRoom.timers.find(x=>x.id===id); if(t) { let nt = JSON.parse(JSON.stringify(t)); nt.id = generateId(); nt.name += ' (Copy)'; currentRoom.timers.push(nt); saveRooms(); renderTimers(); } }
     function delTimer(id) { if(confirm("Delete timer?")) { currentRoom.timers = currentRoom.timers.filter(x=>x.id!==id); saveRooms(); renderTimers(); } }
@@ -808,7 +829,7 @@
             appr: appr, fps: fps, df: df,
             blk: sysBlackout, fTs: lastFlashTs
         });
-        mqttClient.publish(`matc/v6/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
+        mqttClient.publish(`matc/v7/room_${activeRoomCode}/state`, payload, { qos: 0, retain: true });
     }
 
     function slaveConnect() {
@@ -818,9 +839,9 @@
         document.getElementById('slave-login').style.display = 'none';
         document.getElementById('slave-content').style.display = 'flex';
         
-        mqttClient.subscribe(`matc/v6/room_${activeRoomCode}/state`);
+        mqttClient.subscribe(`matc/v7/room_${activeRoomCode}/state`);
         if(heartbeatInt) clearInterval(heartbeatInt);
-        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v6/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
+        heartbeatInt = setInterval(() => { if(mqttClient && mqttClient.connected) mqttClient.publish(`matc/v7/room_${activeRoomCode}/heartbeat`, JSON.stringify({ id: myId, name: myName })); }, 2000);
     }
 
     let lastState = null;
@@ -967,10 +988,8 @@
         let yPct = 0, rPct = 0;
         if(tot > 0) { yPct = (yMs / tot) * 100; rPct = (rMs / tot) * 100; }
         
-        // Progress bar background from Green to Yellow to Red (Left to Right)
         bgEl.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${100-yPct}%, var(--accent-yellow) ${100-yPct}%, var(--accent-yellow) ${100-rPct}%, var(--accent-red) ${100-rPct}%, var(--accent-red) 100%)`;
         
-        // Depleting from left to right -> black mask starts on left and grows.
         let maskWidth = 100 - pct;
         fillEl.style.width = maskWidth + '%';
         
